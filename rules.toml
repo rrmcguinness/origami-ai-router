@@ -1,0 +1,21 @@
+[[agents]]
+name = "CustomerCare"
+description = "Handles inquiries about order status, shipping, returns, and general customer support."
+examples = ["Where is my order?", "I want to return a defective item.", "How long does shipping take?"]
+
+[[agents]]
+name = "ShoppingTool"
+description = "Assists with finding products, checking availability, and providing product recommendations."
+examples = ["I am looking for a new TV.", "Do you have any blue shirts in stock?", "What is the best laptop for gaming?"]
+
+[[agents]]
+name = "Fallback"
+description = "General assistant for queries that do not fall into CustomerCare or ShoppingTool categories."
+examples = ["Hello!", "What time is it?", "Tell me a joke."]
+
+[rules]
+global_rules = [
+    "If the user is asking about a specific order, route to CustomerCare.",
+    "If the user is looking for a product to buy, route to ShoppingTool.",
+    "Otherwise, route to Fallback."
+]

@@ -1,0 +1,53 @@
+from stateless_router.models import RoutingRules, AgentDefinition
+
+RETAIL_ROUTING_RULES = RoutingRules(
+    agents=[
+        AgentDefinition(name="CustomerCare", description="Orders, tracking, returns, cancellations, store policies, or human agent requests."),
+        AgentDefinition(name="ShoppingTool", description="New product searches, discovery, or broad 'how-to' queries solved by products."),
+        AgentDefinition(name="DecisionAssistant", description="Specific questions about an active item's specs, reviews, dimensions, or delivery."),
+        AgentDefinition(name="CarouselQnA", description="Questions or comparisons specifically about items in the current product carousel."),
+        AgentDefinition(name="GeneralKnowledge", description="Trivia, general facts, store locations, or advice not leading to product search."),
+        AgentDefinition(name="GiftCardSupport", description="Checking card balances, purchasing gift cards, or resolving activation issues."),
+        AgentDefinition(name="LoyaltyProgram", description="Walmart+ membership, rewards points, membership status, or subscription benefits."),
+        AgentDefinition(name="PharmacyServices", description="Prescription status, refills, pharmacy hours, or medication-related questions."),
+        AgentDefinition(name="GroceryDelivery", description="Scheduling delivery slots, modifying grocery orders, or delivery issues."),
+        AgentDefinition(name="StorePickup", description="Curbside pickup instructions, 'is my order ready?', or pickup location details."),
+        AgentDefinition(name="RegistryServices", description="Creating, updating, or finding wedding and baby registries."),
+        AgentDefinition(name="FinancialServices", description="Walmart credit card applications, money transfers, bill pay, or tax services."),
+        AgentDefinition(name="ProductRecall", description="Safety alerts, checking if a specific product has been recalled, or return procedures for recalls."),
+        AgentDefinition(name="WarrantyService", description="Protection plans, manufacturer warranties, or filing insurance claims on items."),
+        AgentDefinition(name="InHomeDelivery", description="The 'InHome' white-glove delivery service specifically, including fridge stocking."),
+        AgentDefinition(name="BulkOrders", description="Business-to-Business (B2B) volume purchasing, tax-exempt orders, or large quantities."),
+        AgentDefinition(name="InternationalShipping", description="Exporting items, shipping to non-US locations, or customs information."),
+        AgentDefinition(name="MarketplaceSupport", description="Issues specifically with third-party 'Marketplace' sellers on the site."),
+        AgentDefinition(name="SustainabilityInfo", description="Recycling programs, eco-friendly product initiatives, or carbon footprint info."),
+        AgentDefinition(name="TechnicalSupport", description="Website/app login technical issues, error codes, or account password resets."),
+        AgentDefinition(name="Fallback", description="Greetings, polite closing, out-of-scope, or toxic/unsafe content from the user."),
+    ]
+)
+
+RETAIL_TEST_CASES = [
+    ("Where is my package #88219?", "CustomerCare"),
+    ("I need to return this broken TV.", "CustomerCare"),
+    ("Find me a 4K TCL television under $500.", "ShoppingTool"),
+    ("What are the dimensions of this specific blender?", "DecisionAssistant"),
+    ("Which of these two laptops in the list is lighter?", "CarouselQnA"),
+    ("What time does the store in Bentonville close?", "GeneralKnowledge"),
+    ("How do I check my physical gift card balance?", "GiftCardSupport"),
+    ("When does my Walmart+ membership renew?", "LoyaltyProgram"),
+    ("Is my heart medication ready for pickup?", "PharmacyServices"),
+    ("I need to reschedule my delivery for 4 PM today.", "GroceryDelivery"),
+    ("Tell the driver to leave the groceries at the back door.", "GroceryDelivery"),
+    ("Is my curbside order ready at the store yet?", "StorePickup"),
+    ("I want to create a baby registry for my shower.", "RegistryServices"),
+    ("How do I pay my Walmart credit card bill?", "FinancialServices"),
+    ("Has there been a safety recall on my child's car seat?", "ProductRecall"),
+    ("Does my protection plan cover accidental water damage?", "WarrantyService"),
+    ("Will the InHome driver put the milk in my fridge?", "InHomeDelivery"),
+    ("I need to order 500 cases of water for an event.", "BulkOrders"),
+    ("Do you ship electronics to Mexico?", "InternationalShipping"),
+    ("How do I contact the third-party seller for my patio set?", "MarketplaceSupport"),
+    ("Where can I recycle my old rechargeable batteries?", "SustainabilityInfo"),
+    ("I've been locked out of my account and need a reset.", "TechnicalSupport"),
+    ("Hello, how are you today?", "Fallback"),
+]

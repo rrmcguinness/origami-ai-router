@@ -1,0 +1,53 @@
+[project]
+name = "edgerouter"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Ryan McGuinness", email = "rmcguinness@google.com" }
+]
+requires-python = "==3.13.*"
+dependencies = [
+    "common",
+    "stateless-router",
+    "gemma-router",
+    "gemini-router",
+    "fastapi>=0.135.1",
+    "uvicorn>=0.42.0",
+    "google-auth>=2.49.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+]
+
+[project.scripts]
+edgerouter = "edgerouter:main"
+
+[build-system]
+requires = ["uv_build>=0.8.0,<0.9"]
+build-backend = "uv_build"
+
+[tool.uv.workspace]
+members = [
+    "packages/*",
+]
+
+[tool.uv.sources]
+common = { workspace = true }
+gemini-router = { workspace = true }
+gemma-router = { workspace = true }
+stateless-router = { workspace = true }
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+default = true
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::DeprecationWarning:opentelemetry.exporter.cloud_trace.*",
+]

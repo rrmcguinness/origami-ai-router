@@ -1,0 +1,21 @@
+[project]
+name = "common"
+version = "0.1.0"
+description = "Common configuration and utilities and models."
+authors = [
+    { name = "Ryan McGuinness", email = "rmcguinness@google.com" }
+]
+requires-python = "==3.13.*"
+dependencies = [
+    "toml>=0.10.2",
+    "google-cloud-aiplatform>=1.142.0",
+    "opentelemetry-api==1.38.0",
+    "opentelemetry-sdk==1.38.0",
+    "opentelemetry-exporter-gcp-trace>=1.11.0",
+    "opentelemetry-exporter-gcp-logging>=1.11.0a0",
+    "opentelemetry-semantic-conventions",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.0,<0.9"]
+build-backend = "uv_build"
