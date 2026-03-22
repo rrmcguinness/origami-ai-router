@@ -1,5 +1,5 @@
 [project]
-name = "gemma-router"
+name = "llama-cpp-router"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -12,7 +12,7 @@ dependencies = [
     "google-genai>=1.68.0",
     "llama-cpp-python>=0.3.16",
     "torch>=2.10.0",
-    "transformers>=5.3.0",
+    "transformers>=4.56.0,<5.0.0",
     "stateless-router",
     "common",
 ]

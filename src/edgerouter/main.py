@@ -2,7 +2,7 @@ import argparse
 import json
 import uvicorn
 import toml
-from typing import Optional
+from typing import Optional, Dict, Any
 import anyio
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,10 +10,13 @@ from pydantic import BaseModel
 from .routes import auth
 from common.config import Config
 from common.otel import init_otel, get_tracer
+from opentelemetry.propagate import extract
+from stateless_router.interface import StatelessRouter
 from stateless_router.models import RoutingRules, AgentDefinition
 from stateless_router.builder import RouterBuilder
 from gemini_router.main import GeminiRouter
-from gemma_router.main import GemmaRouter, GemmaWorkerPool
+from vllm_router.main import VllmRouter
+from llama_cpp_router.main import LlamaCppRouter, LlamaCppWorkerPool
 
 # Pydantic models for the API request/response
 class RouteRequest(BaseModel):
@@ -26,11 +29,9 @@ class RouteResponse(BaseModel):
 app = FastAPI(title="EdgeRouter Service", description="Aggregator for Gemini and Gemma routers.", version="1.0.0")
 
 # Global variables for routers and config
-gemini_router = None
-gemma_router = None
+active_routers: Dict[str, StatelessRouter] = {}
 config = None
 tracer = None
-gemma_pool = None
 
 app.add_middleware(
     CORSMiddleware,
@@ -50,40 +51,68 @@ def load_rules(rules_path: str) -> RoutingRules:
     
     return RoutingRules(agents=agents, global_rules=global_rules)
 
+async def setup_routers(server_cfg, rules: RoutingRules):
+    """Parses [[server.routers]] configuration and provisions the active_routers dictionary."""
+    global active_routers
+    if not server_cfg or not hasattr(server_cfg, "routers"):
+        print("WARNING: No [[server.routers]] defined in configuration. Routing will fail.")
+        return
+
+    router_configs = server_cfg.routers
+
+    for r_cfg in router_configs:
+        name = getattr(r_cfg, "name", None) if hasattr(r_cfg, "name") else r_cfg.get("name")
+        provider = getattr(r_cfg, "provider", None) if hasattr(r_cfg, "provider") else r_cfg.get("provider")
+        
+        if not name or not provider:
+            print(f"Skipping invalid router config: {r_cfg}")
+            continue
+            
+        print(f"Initializing router '{name}' via provider '{provider}'...")
+        
+        if provider == "gemini":
+            active_routers[name] = (RouterBuilder()
+                                    .with_provider(GeminiRouter)
+                                    .with_rules(rules)
+                                    .build())
+                                    
+        elif provider == "auto_local":
+            model_path = getattr(r_cfg, "model_path", None) if hasattr(r_cfg, "model_path") else r_cfg.get("model_path")
+            n_threads = getattr(r_cfg, "n_threads", 4) if hasattr(r_cfg, "n_threads") else r_cfg.get("n_threads", 4)
+            
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    print(f"  CUDA detected for '{name}', initializing VllmRouter.")
+                    active_routers[name] = VllmRouter(rules, model_path=model_path)
+                else:
+                    raise RuntimeError("CUDA not available")
+            except Exception as e:
+                print(f"  Falling back to LlamaCppWorkerPool for '{name}' due to: {e}")
+                pool = LlamaCppWorkerPool(rules, model_path=model_path, num_workers=n_threads)
+                await pool.initialize()
+                active_routers[name] = pool
+        else:
+            print(f"Unknown provider '{provider}' for router '{name}'")
+
 @app.on_event("startup")
 async def startup_event():
     """Initializes routers and telemetry on startup."""
-    global gemini_router, gemma_router, config, tracer
+    global config, tracer, active_routers
     
-    # Parse CLI arguments (this is a bit tricky with FastAPI/uvicorn, 
-    # but we'll assume they were passed to the process)
     parser = argparse.ArgumentParser(description="EdgeRouter FastAPI Service")
     parser.add_argument("--rules", type=str, default="rules.toml", help="Path to the routing rules TOML file")
     args, unknown = parser.parse_known_args()
     
-    # Load configuration
     config = Config()
     server_cfg = getattr(config.baseConfig, "server", None)
     
-    # Initialize OTel
     init_otel(config)
     tracer = get_tracer("edgerouter_service")
-    
-    # Load Routing Rules
     rules = load_rules(args.rules)
     
-    # Initialize Gemini Router
-    gemini_router = (RouterBuilder()
-                    .with_provider(GeminiRouter)
-                    .with_rules(rules)
-                    .build())
-    
-    # Initialize Gemma Pool
-    model_path = getattr(server_cfg, "model_path", None)
-    gemma_pool = GemmaWorkerPool(rules, model_path=model_path, num_workers=4)
-    await gemma_pool.initialize()
-    
-    print(f"EdgeRouter service started with rules from: {args.rules}")
+    await setup_routers(server_cfg, rules)
+    print(f"EdgeRouter service started with rules from: {args.rules}. Active routers: {list(active_routers.keys())}")
 
 app.include_router(auth.router)
 
@@ -94,7 +123,8 @@ async def health_check():
 
 @app.get("/readiness")
 async def readiness_check():
-    return {"status": "ready", "router_initialized": gemini_router is not None}
+    global active_routers
+    return {"status": "ready", "router_initialized": len(active_routers) > 0}
 
 @app.post("/route", response_model=RouteResponse)
 async def route_query(request: RouteRequest, req: Request):
@@ -102,59 +132,46 @@ async def route_query(request: RouteRequest, req: Request):
     Main routing endpoint.
     Participates in OTel span if provided in headers, otherwise starts a new one.
     """
-    global tracer, gemini_router, gemma_pool, config
+    global tracer, config, active_routers
     if tracer is None:
         tracer = get_tracer("edgerouter_service")
     
     # In test environments, startup_event might not have fired
-    if gemini_router is None or gemma_router is None:
+    if not active_routers:
         if config is None:
             config = Config()
         
-        # Determine rules path - defaulting to rules.toml for tests
         rules_path = "rules.toml"
-        # We can't easily get CLI args here in a test, so we use the default
         rules = load_rules(rules_path)
-        
         server_cfg = getattr(config.baseConfig, "server", None)
-        
-        if gemini_router is None:
-            gemini_router = (RouterBuilder()
-                            .with_provider(GeminiRouter)
-                            .with_rules(rules)
-                            .build())
-        
-        if gemma_pool is None:
-            model_path = getattr(server_cfg, "model_path", None)
-            gemma_pool = GemmaWorkerPool(rules, model_path=model_path, num_workers=4)
-            # This is sync-ish in a lazy context, but we need to await it
-            await gemma_pool.initialize()
+        await setup_routers(server_cfg, rules)
+
+    ctx = extract(req.headers)
 
     with tracer.start_as_current_span(
         "edgerouter.api_route",
-        attributes={"router.model_requested": request.model}
+        attributes={"router.model_requested": request.model},
+        context=ctx
     ) as span:
         
-        target_router = None
-        if request.model.lower() == "gemini":
-            target_router = gemini_router
-        elif request.model.lower() == "gemma":
-            # Gemma uses the specialized worker pool
-            outcome = await gemma_pool.route_async(request.prompt)
-            span.set_attribute("router.outcome", outcome)
-            return RouteResponse(route=outcome)
-        else:
-            span.set_attribute("error", True)
-            span.set_attribute("error.message", f"Unsupported model: {request.model}")
-            raise HTTPException(status_code=400, detail=f"Unsupported model: {request.model}")
-
+        model_name = request.model.lower()
+        target_router = active_routers.get(model_name)
+        
         if not target_router:
             span.set_attribute("error", True)
-            span.set_attribute("error.message", "Router not initialized")
-            raise HTTPException(status_code=500, detail="Router not initialized")
+            span.set_attribute("error.message", f"Router not configured for model: {request.model}")
+            raise HTTPException(status_code=404, detail=f"Router not configured for model: {request.model}")
 
-        # Execute routing for Gemini (standard sync router)
-        outcome = await anyio.to_thread.run_sync(target_router.route, request.prompt)
+        # Execute routing dynamically based on available interface
+        if hasattr(target_router, "route_async") and callable(getattr(target_router, "route_async")):
+            outcome = await target_router.route_async(request.prompt)
+        elif hasattr(target_router, "route") and callable(getattr(target_router, "route")):
+            outcome = await anyio.to_thread.run_sync(target_router.route, request.prompt)
+        else:
+            span.set_attribute("error", True)
+            span.set_attribute("error.message", f"Invalid router interface for {request.model}")
+            raise HTTPException(status_code=500, detail=f"Invalid router interface for {request.model}")
+            
         span.set_attribute("router.outcome", outcome)
         return RouteResponse(route=outcome)
 

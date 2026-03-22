@@ -1,61 +1,40 @@
 import pytest
 import time
 import random
-import threading
-import uvicorn
 import httpx
 import asyncio
 from edgerouter.main import app
 from .data import RETAIL_TEST_CASES
 from common.otel import get_tracer, flush_otel
+from common.config import Config
 
-# Configuration for the load test
-SERVER_HOST = "127.0.0.1"
-SERVER_PORT = 8005  # Use a different port to avoid conflicts
-BASE_URL = f"http://{SERVER_HOST}:{SERVER_PORT}"
-TOTAL_REQUESTS = 1000
-CONCURRENT_CLIENTS = 10 
+from opentelemetry.propagate import inject
 
-def run_server():
-    """Starts the FastAPI server in a separate thread."""
-    uvicorn.run(app, host=SERVER_HOST, port=SERVER_PORT, log_level="error")
+TOTAL_REQUESTS = 2000
+CONCURRENT_CLIENTS = 250 
 
 @pytest.fixture(scope="module", autouse=True)
-def engine_service():
-    """Fixture to start and stop the server for the duration of the test module."""
-    server_thread = threading.Thread(target=run_server, daemon=True)
-    server_thread.start()
-    
-    # Wait for server to be ready
-    timeout = 15
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        try:
-            with httpx.Client() as client:
-                response = client.get(f"{BASE_URL}/health")
-                if response.status_code == 200:
-                    break
-        except Exception:
-            pass
-        time.sleep(0.5)
-    else:
-        pytest.fail("Server failed to start in time for load test.")
-    
+def otel_flush():
+    """Fixture to flush the OTEL telemetry at the end of the module."""
     yield
     flush_otel()
 
-async def send_request(client, semaphore, results, tracer):
+async def send_request(client, semaphore, results, tracer, target_model: str):
     """Sends a single routing request with a random test case."""
     async with semaphore:
         with tracer.start_as_current_span("load_test.send_request") as span:
             prompt, expected = random.choice(RETAIL_TEST_CASES)
             payload = {
-                "model": "gemma",
+                "model": target_model,
                 "prompt": prompt
             }
             span.set_attribute("test.prompt", prompt)
+            
+            headers = {}
+            inject(headers)
+            
             try:
-                response = await client.post(f"{BASE_URL}/route", json=payload, timeout=30.0)
+                response = await client.post("http://test/route", json=payload, headers=headers, timeout=30.0)
                 success = response.status_code == 200
                 results.append(success)
                 span.set_attribute("http.status_code", response.status_code)
@@ -64,16 +43,22 @@ async def send_request(client, semaphore, results, tracer):
                 span.record_exception(e)
                 span.set_status(status=2, description=str(e)) # 2 = ERROR
 
-async def run_load_test(tracer):
+async def run_load_test(tracer, target_model: str):
     semaphore = asyncio.Semaphore(CONCURRENT_CLIENTS)
     results = []
     
-    with tracer.start_as_current_span("load_test.execution_loop"):
-        async with httpx.AsyncClient() as client:
-            tasks = [send_request(client, semaphore, results, tracer) for _ in range(TOTAL_REQUESTS)]
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        print(f"Warming up Local AI Router for model '{target_model}'...")
+        await client.post("http://test/route", json={"model": target_model, "prompt": "warmup"}, timeout=120.0)
+        print("Warmup complete. Starting load generation.")
+        
+        start_time = time.time()
+        with tracer.start_as_current_span("load_test.execution_loop"):
+            tasks = [send_request(client, semaphore, results, tracer, target_model) for _ in range(TOTAL_REQUESTS)]
             await asyncio.gather(*tasks)
-    
-    return results
+        end_time = time.time()
+        
+    return results, start_time, end_time
 
 def test_gemma_load():
     """
@@ -81,14 +66,16 @@ def test_gemma_load():
     Uses asyncio to ensure concurrent execution from the client side.
     Instrumented with OTel spans for trace analysis.
     """
-    tracer = get_tracer("gemma_load_test")
+    tracer = get_tracer("local_router_load_test")
     
-    with tracer.start_as_current_span("gemma_load_test.total_execution") as parent_span:
-        print(f"\nStarting INSTRUMENTED ASYNC load test: {TOTAL_REQUESTS} requests...")
+    with tracer.start_as_current_span("local_router_load_test.total_execution") as parent_span:
+        cfg = Config()
+        test_cfg = getattr(cfg.baseConfig, "test", None)
+        target_model = getattr(test_cfg, "model", "gemma")
         
-        start_time = time.time()
-        results = asyncio.run(run_load_test(tracer))
-        end_time = time.time()
+        print(f"\nStarting INSTRUMENTED ASYNC load test for model '{target_model}': {TOTAL_REQUESTS} requests...")
+        
+        results, start_time, end_time = asyncio.run(run_load_test(tracer, target_model))
         
         duration = end_time - start_time
         success_count = sum(results)

@@ -1,5 +1,4 @@
 import pytest
-import os
 from common.otel import flush_otel, init_otel, get_tracer
 
 @pytest.fixture(scope="session", autouse=True)

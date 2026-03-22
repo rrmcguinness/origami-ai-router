@@ -9,8 +9,8 @@ authors = [
 requires-python = "==3.13.*"
 dependencies = [
     "common",
-    "stateless-router",
-    "gemma-router",
+    "vllm-router",
+    "llama-cpp-router",
     "gemini-router",
     "fastapi>=0.135.1",
     "uvicorn>=0.42.0",
@@ -38,7 +38,8 @@ members = [
 [tool.uv.sources]
 common = { workspace = true }
 gemini-router = { workspace = true }
-gemma-router = { workspace = true }
+vllm-router = { workspace = true }
+llama-cpp-router = { workspace = true }
 stateless-router = { workspace = true }
 
 [[tool.uv.index]]

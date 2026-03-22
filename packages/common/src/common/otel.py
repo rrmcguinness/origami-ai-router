@@ -84,7 +84,11 @@ def init_otel(config: Config = None):
     if otel_cfg.use_gcp:
         logger.info(f"Using CloudTraceSpanExporter for project: {otel_cfg.project_id or 'Inferred'}")
         trace_exporter = CloudTraceSpanExporter(project_id=otel_cfg.project_id or None)
-        tracer_provider.add_span_processor(BatchSpanProcessor(trace_exporter))
+        tracer_provider.add_span_processor(BatchSpanProcessor(
+            trace_exporter,
+            max_queue_size=16384,
+            max_export_batch_size=4096
+        ))
     else:
         logger.info("GCP telemetry disabled, using NoOp/Default providers for tracing")
 
@@ -95,7 +99,11 @@ def init_otel(config: Config = None):
     if otel_cfg.use_gcp:
         logger.info(f"Using CloudLoggingExporter for project: {otel_cfg.project_id or 'Inferred'}")
         log_exporter = CloudLoggingExporter(project_id=otel_cfg.project_id or None)
-        logger_provider.add_log_record_processor(BatchLogRecordProcessor(log_exporter))
+        logger_provider.add_log_record_processor(BatchLogRecordProcessor(
+            log_exporter,
+            max_queue_size=16384,
+            max_export_batch_size=4096
+        ))
     else:
         logger.info("GCP telemetry disabled, using NoOp/Default providers for logging")
 
