@@ -1,3 +1,17 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import json
 import asyncio
 from typing import Optional
@@ -54,7 +68,7 @@ class GeminiRouter(StatelessRouter):
         self.tracer = get_tracer("gemini_router")
         self.environment = os.environ.get("RUNTIME_ENV", "local")
 
-    async def route(self, user_query: str) -> str:
+    async def route(self, user_query: str, context_summary: Optional[str] = None) -> str:
         """
         Processes the query through Gemini with strict JSON response configuration.
         Utilizes the shared executor to prevent blocking the async event loop.
@@ -62,9 +76,13 @@ class GeminiRouter(StatelessRouter):
         loop = asyncio.get_running_loop()
         
         def _call_gemini():
+            prompt = f"User prompt: {user_query}\nRoute:"
+            if context_summary:
+                prompt = f"Reference Context: {context_summary}\n{prompt}"
+                
             return self.client.models.generate_content(
                 model="gemini-3.1-flash-lite-preview",
-                contents=f"User prompt: {user_query}\nRoute:",
+                contents=prompt,
                 config={
                     "system_instruction": self.system_prompt,
                     "response_mime_type": "application/json"

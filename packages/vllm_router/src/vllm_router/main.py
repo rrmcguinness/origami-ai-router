@@ -1,3 +1,17 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import json
 from pathlib import Path
 from typing import Final, Dict, Any, Optional
@@ -68,7 +82,7 @@ class VllmRouter(StatelessRouter):
         
         logger.info(f"VllmRouter initialized with vLLM engine backing model: {model_path}")
 
-    async def route(self, user_query: str) -> str:
+    async def route(self, user_query: str, context_summary: Optional[str] = None) -> str:
         """
         Routes the user query using asynchronous vLLM continuous batching block.
         """
@@ -78,7 +92,11 @@ class VllmRouter(StatelessRouter):
             span.set_attribute("router.vllm_request_id", request_id)
             
             # Gemma chat format
-            formatted_prompt = f"<bos><start_of_turn>system\n{self.system_prompt}<end_of_turn>\n<start_of_turn>user\nUser: {user_query}\nRoute:<end_of_turn>\n<start_of_turn>model\n"
+            user_input = f"User: {user_query}"
+            if context_summary:
+                user_input = f"Reference Context: {context_summary}\n{user_input}"
+                
+            formatted_prompt = f"<bos><start_of_turn>system\n{self.system_prompt}<end_of_turn>\n<start_of_turn>user\n{user_input}\nRoute:<end_of_turn>\n<start_of_turn>model\n"
             
             try:
                 results_generator = self.engine.generate(

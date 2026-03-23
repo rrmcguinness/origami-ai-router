@@ -1,21 +1,104 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 [[agents]]
 name = "CustomerCare"
-description = "Handles inquiries about order status, shipping, returns, and general customer support."
-examples = ["Where is my order?", "I want to return a defective item.", "How long does shipping take?"]
+description = "Orders, tracking, returns, cancellations, store policies, or human agent requests."
 
 [[agents]]
 name = "ShoppingTool"
-description = "Assists with finding products, checking availability, and providing product recommendations."
-examples = ["I am looking for a new TV.", "Do you have any blue shirts in stock?", "What is the best laptop for gaming?"]
+description = "New product searches, discovery, or broad 'how-to' queries solved by products."
+
+[[agents]]
+name = "DecisionAssistant"
+description = "Specific questions about an active item's specs, reviews, dimensions, or delivery."
+
+[[agents]]
+name = "CarouselQnA"
+description = "Questions or comparisons specifically about items in the current product carousel."
+
+[[agents]]
+name = "GeneralKnowledge"
+description = "Trivia, general facts, store locations, or advice not leading to product search."
+
+[[agents]]
+name = "GiftCardSupport"
+description = "Checking card balances, purchasing gift cards, or resolving activation issues."
+
+[[agents]]
+name = "LoyaltyProgram"
+description = "Retailer+ membership, rewards points, membership status, or subscription benefits."
+
+[[agents]]
+name = "PharmacyServices"
+description = "Prescription status, refills, pharmacy hours, or medication-related questions."
+
+[[agents]]
+name = "GroceryDelivery"
+description = "Scheduling delivery slots, modifying grocery orders, or delivery issues."
+
+[[agents]]
+name = "StorePickup"
+description = "Curbside pickup instructions, 'is my order ready?', or pickup location details."
+
+[[agents]]
+name = "RegistryServices"
+description = "Creating, updating, or finding wedding and baby registries."
+
+[[agents]]
+name = "FinancialServices"
+description = "Retailer credit card applications, money transfers, bill pay, or tax services."
+
+[[agents]]
+name = "ProductRecall"
+description = "Safety alerts, checking if a specific product has been recalled, or return procedures for recalls."
+
+[[agents]]
+name = "WarrantyService"
+description = "Protection plans, manufacturer warranties, or filing insurance claims on items."
+
+[[agents]]
+name = "InHomeDelivery"
+description = "The 'InHome' white-glove delivery service specifically, including fridge stocking."
+
+[[agents]]
+name = "BulkOrders"
+description = "Business-to-Business (B2B) volume purchasing, tax-exempt orders, or large quantities."
+
+[[agents]]
+name = "InternationalShipping"
+description = "Exporting items, shipping to non-US locations, or customs information."
+
+[[agents]]
+name = "MarketplaceSupport"
+description = "Issues specifically with third-party 'Marketplace' sellers on the site."
+
+[[agents]]
+name = "SustainabilityInfo"
+description = "Recycling programs, eco-friendly product initiatives, or carbon footprint info."
+
+[[agents]]
+name = "TechnicalSupport"
+description = "Website/app login technical issues, error codes, or account password resets."
 
 [[agents]]
 name = "Fallback"
-description = "General assistant for queries that do not fall into CustomerCare or ShoppingTool categories."
-examples = ["Hello!", "What time is it?", "Tell me a joke."]
+description = "Greetings, polite closing, out-of-scope, or toxic/unsafe content from the user."
 
 [rules]
 global_rules = [
-    "If the user is asking about a specific order, route to CustomerCare.",
-    "If the user is looking for a product to buy, route to ShoppingTool.",
-    "Otherwise, route to Fallback."
+    "Always route to the most specific agent available.",
+    "If no specific agent fits, use Fallback.",
+    "Do not invent agents."
 ]

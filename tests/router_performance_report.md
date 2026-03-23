@@ -30,6 +30,35 @@ The following table projects the monthly estimated cost and infrastructure node 
 
 > *\*Note: Guaranteeing 1,000+ continuous TPS on Gemini requires reserving dedicated Provisioned Throughput (PT) from Google to bypass strict quota limits. This transitions the billing model from the pure token-volume baseline calculated above into fixed capacity block rentals, which carry unique enterprise SLAs and higher financial premiums.*
 
+## Architectural Integration Flow
+
+The following sequence diagram illustrates how the stateless **EdgeRouter** serves as the high-speed traffic controller within a stateful enterprise agent architecture.
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant O as Stateful Orchestrator
+    participant DB as Conversation State (Redis/Firestore)
+    participant ER as EdgeRouter (Stateless)
+    participant SA as Specialized Agent (e.g. CustomerCare)
+
+    U->>O: "Where is my package #88219?"
+    O->>DB: Load Conversation History
+    DB-->>O: [Past Context]
+    
+    rect rgb(240, 248, 255)
+    Note over O,ER: High-Speed Routing Phase
+    O->>ER: Route Query (Prompt + History Metadata)
+    ER-->>O: { "route": "CustomerCare" }
+    end
+
+    O->>SA: Invoke Specialized Logic
+    SA-->>O: "Your package is currently in Memphis..."
+    
+    O->>DB: Persist New Turn (Stateless -> Stateful)
+    O->>U: "Your package is currently in Memphis..."
+```
+
 ## Executive Summary
 When evaluating routing architectures for a sustained 120 RPS load in Google Cloud, the choice fundamentally comes down to **Self-Hosted GPU (vLLM)** vs. **Managed Cloud Services (Gemini)**.
 

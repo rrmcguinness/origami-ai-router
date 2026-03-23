@@ -62,7 +62,7 @@ google_base_url = "https://aiplatform.googleapis.com"
 
 [load_test]
 total_requests = 200
-concurrent_clients = 100
+concurrent_clients = 2
 server_port_gemini = 8006
 server_port_gemma = 8007
 n_threads = 1

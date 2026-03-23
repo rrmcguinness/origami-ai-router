@@ -1,3 +1,17 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import json
 from pathlib import Path
 from typing import Final, Dict, Any, Optional
@@ -52,15 +66,20 @@ class LlamaCppRouter(StatelessRouter):
         if "Fallback" not in agent_names:
             agent_names.append("Fallback")
             
-        choices_str = " | ".join(f'"{name}"' for name in agent_names)
-        grammar_str = f'''
-root ::= "{{" "\\\"route\\\"" ":" space route_choice "}}"
-route_choice ::= {choices_str}
-space ::= " "?
-        '''
-        return LlamaGrammar.from_string(grammar_str)
+        schema = {
+            "type": "object",
+            "properties": {
+                "route": {
+                    "type": "string",
+                    "enum": agent_names
+                }
+            },
+            "required": ["route"],
+            "additionalProperties": False
+        }
+        return LlamaGrammar.from_json_schema(json.dumps(schema))
 
-    async def route(self, user_query: str) -> str:
+    async def route(self, user_query: str, context_summary: Optional[str] = None) -> str:
         """
         Routes the query using local Llama model.
         Execution is offloaded to the shared ThreadPoolExecutor.
@@ -71,10 +90,14 @@ space ::= " "?
             with self.tracer.start_as_current_span("llama_cpp_router.route_sync") as span:
                 span.set_attribute("router.query", user_query)
                 
+                user_input = f"User: {user_query}\nRoute:"
+                if context_summary:
+                    user_input = f"Reference Context: {context_summary}\n{user_input}"
+                    
                 response: Dict[str, Any] = self.llm.create_chat_completion(
                     messages=[
                         {"role": "system", "content": self.system_prompt},
-                        {"role": "user", "content": f"User: {user_query}\nRoute:"}
+                        {"role": "user", "content": user_input}
                     ],
                     grammar=self.grammar,
                     temperature=0.0
@@ -123,7 +146,7 @@ class LlamaCppWorkerPool(StatelessRouter):
         self.initialized = True
         logger.info("LlamaCpp worker pool initialization complete.")
 
-    async def route(self, user_query: str) -> str:
+    async def route(self, user_query: str, context_summary: Optional[str] = None) -> str:
         if not self.initialized:
             await self.initialize()
             
@@ -131,7 +154,7 @@ class LlamaCppWorkerPool(StatelessRouter):
             worker = await self.workers.get()
             try:
                 # Delegate to the worker's async route method
-                return await worker.route(user_query)
+                return await worker.route(user_query, context_summary=context_summary)
             finally:
                 await self.workers.put(worker)
 
