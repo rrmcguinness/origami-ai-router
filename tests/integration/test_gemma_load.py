@@ -4,14 +4,14 @@ import random
 import httpx
 import asyncio
 from edgerouter.main import app
-from .data import RETAIL_TEST_CASES
+from .data import RETAIL_TEST_CASES, get_test_env_setting
 from common.otel import get_tracer, flush_otel
 from common.config import Config
 
 from opentelemetry.propagate import inject
 
-TOTAL_REQUESTS = 2000
-CONCURRENT_CLIENTS = 250 
+TOTAL_REQUESTS = int(get_test_env_setting("total_requests", "100"))
+CONCURRENT_CLIENTS = int(get_test_env_setting("concurrent_clients", "10"))
 
 @pytest.fixture(scope="module", autouse=True)
 def otel_flush():

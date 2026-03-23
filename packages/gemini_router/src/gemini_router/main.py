@@ -1,4 +1,7 @@
 import json
+import asyncio
+from typing import Optional
+from concurrent.futures import ThreadPoolExecutor
 from google import genai
 from stateless_router.interface import StatelessRouter
 from stateless_router.models import RoutingRules
@@ -12,8 +15,13 @@ class GeminiRouter(StatelessRouter):
     Uses google-genai and Vertex AI for enterprise-grade routing.
     Configuration is pulled from common.Config.
     """
-    def __init__(self, rules: RoutingRules, project_id: str | None = None, location: str | None = None):
-        super().__init__(rules)
+    def __init__(self, 
+                 rules: RoutingRules, 
+                 executor: Optional[ThreadPoolExecutor] = None,
+                 project_id: str | None = None, 
+                 location: str | None = None,
+                 google_base_url: str | None = None):
+        super().__init__(rules, executor)
         
         # Load from config if not provided
         config = Config()
@@ -22,31 +30,39 @@ class GeminiRouter(StatelessRouter):
         project_id = project_id or getattr(app_config, "google_project_id", "rmcguinness")
         location = location or getattr(app_config, "google_location", "us-central1")
         api_key = getattr(app_config, "google_api_key", None)
+        google_base_url = google_base_url or getattr(app_config, "google_base_url", None)
+
+        http_options = None
+        if google_base_url:
+            from google.genai import types
+            http_options = types.HttpOptions(base_url=google_base_url)
 
         if api_key:
             self.client = genai.Client(
                 api_key=api_key,
-                vertexai=False
+                vertexai=False,
+                http_options=http_options
             )
         else:
             self.client = genai.Client(
                 project=project_id,
                 location=location,
-                vertexai=True
+                vertexai=True,
+                http_options=http_options
             )
         self.system_prompt = rules.to_system_prompt()
         self.tracer = get_tracer("gemini_router")
         self.environment = os.environ.get("RUNTIME_ENV", "local")
 
-    def route(self, user_query: str) -> str:
+    async def route(self, user_query: str) -> str:
         """
         Processes the query through Gemini with strict JSON response configuration.
+        Utilizes the shared executor to prevent blocking the async event loop.
         """
-        with self.tracer.start_as_current_span("gemini_router.route") as span:
-            span.set_attribute("router.query", user_query)
-            span.set_attribute("router.environment", self.environment)
-            
-            response = self.client.models.generate_content(
+        loop = asyncio.get_running_loop()
+        
+        def _call_gemini():
+            return self.client.models.generate_content(
                 model="gemini-3.1-flash-lite-preview",
                 contents=f"User prompt: {user_query}\nRoute:",
                 config={
@@ -54,6 +70,13 @@ class GeminiRouter(StatelessRouter):
                     "response_mime_type": "application/json"
                 }
             )
+
+        with self.tracer.start_as_current_span("gemini_router.route") as span:
+            span.set_attribute("router.query", user_query)
+            span.set_attribute("router.environment", self.environment)
+            
+            # Execute the blocking call in the shared thread pool
+            response = await loop.run_in_executor(self.executor, _call_gemini)
             
             # Extract token usage metadata from Gemini response
             if response.usage_metadata:

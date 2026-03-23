@@ -6,15 +6,15 @@ import uvicorn
 import httpx
 import asyncio
 from edgerouter.main import app
-from .data import RETAIL_TEST_CASES
+from .data import RETAIL_TEST_CASES, get_test_env_setting
 from common.otel import get_tracer, flush_otel
 
-# Configuration for the load test
+# Configuration for the load test driven by test_config.toml
 SERVER_HOST = "127.0.0.1"
-SERVER_PORT = 8006  # Different port for Gemini test
+SERVER_PORT = int(get_test_env_setting("server_port_gemini", "8006"))
 BASE_URL = f"http://{SERVER_HOST}:{SERVER_PORT}"
-TOTAL_REQUESTS = 1000
-CONCURRENT_CLIENTS = 10 
+TOTAL_REQUESTS = int(get_test_env_setting("total_requests", "100"))
+CONCURRENT_CLIENTS = int(get_test_env_setting("concurrent_clients", "10"))
 
 def run_server():
     """Starts the FastAPI server in a separate thread."""

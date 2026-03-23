@@ -174,7 +174,7 @@ class StorageUtil:
             pattern_parts_len = len(blob_prefix.strip('/').split('/'))
             
             for blob in blobs:
-                # To map globs like gs://wmt-exitpass-dev-rrm/7636/*/* to trip directories,
+                # To map globs like gs://retailer-exitpass-dev-rrm/7636/*/* to trip directories,
                 # we match paths up to the expected depth of the pattern.
                 parts = blob.name.strip('/').split('/')
                 

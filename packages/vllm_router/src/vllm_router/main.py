@@ -20,13 +20,19 @@ from vllm.sampling_params import StructuredOutputsParams
 
 logger = logging.getLogger(__name__)
 
+from concurrent.futures import ThreadPoolExecutor
+
 class VllmRouter(StatelessRouter):
     """
     VllmRouter implementation of the StatelessRouter interface.
     Uses vLLM AsyncLLMEngine for high throughput continuous batching.
     """
-    def __init__(self, rules: RoutingRules, model_path: str | Path | None = None, n_threads: int = 4):
-        super().__init__(rules)
+    def __init__(self, 
+                 rules: RoutingRules, 
+                 executor: Optional[ThreadPoolExecutor] = None,
+                 model_path: str | Path | None = None, 
+                 n_threads: int = 4):
+        super().__init__(rules, executor)
         
         # Initialize vLLM Async Engine natively optimized for continuous request batching
         engine_args = AsyncEngineArgs(
@@ -62,7 +68,7 @@ class VllmRouter(StatelessRouter):
         
         logger.info(f"VllmRouter initialized with vLLM engine backing model: {model_path}")
 
-    async def route_async(self, user_query: str) -> str:
+    async def route(self, user_query: str) -> str:
         """
         Routes the user query using asynchronous vLLM continuous batching block.
         """
@@ -105,16 +111,6 @@ class VllmRouter(StatelessRouter):
             except Exception as e:
                 span.record_exception(e)
                 return "Fallback"
-                
-    def route(self, user_query: str) -> str:
-        """
-        Synchronous fallback logic avoiding thread locks on the async engine.
-        """
-        try:
-            loop = asyncio.get_running_loop()
-            return loop.run_until_complete(self.route_async(user_query))
-        except RuntimeError:
-            return asyncio.run(self.route_async(user_query))
 
 def get_current_file_path(filename: str) -> Path:
     current_dir: Final[Path] = Path(__file__).parent.resolve()

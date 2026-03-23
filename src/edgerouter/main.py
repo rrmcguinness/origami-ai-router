@@ -14,9 +14,7 @@ from opentelemetry.propagate import extract
 from stateless_router.interface import StatelessRouter
 from stateless_router.models import RoutingRules, AgentDefinition
 from stateless_router.builder import RouterBuilder
-from gemini_router.main import GeminiRouter
-from vllm_router.main import VllmRouter
-from llama_cpp_router.main import LlamaCppRouter, LlamaCppWorkerPool
+# Imports moved inside setup_routers to allow conditional provider loading
 
 # Pydantic models for the API request/response
 class RouteRequest(BaseModel):
@@ -27,11 +25,6 @@ class RouteResponse(BaseModel):
     route: str
 
 app = FastAPI(title="EdgeRouter Service", description="Aggregator for Gemini and Gemma routers.", version="1.0.0")
-
-# Global variables for routers and config
-active_routers: Dict[str, StatelessRouter] = {}
-config = None
-tracer = None
 
 app.add_middleware(
     CORSMiddleware,
@@ -51,9 +44,32 @@ def load_rules(rules_path: str) -> RoutingRules:
     
     return RoutingRules(agents=agents, global_rules=global_rules)
 
-async def setup_routers(server_cfg, rules: RoutingRules):
+from concurrent.futures import ThreadPoolExecutor
+
+# Global variables for routers, config, and executor
+active_routers: Dict[str, StatelessRouter] = {}
+config: Optional[Config] = None
+tracer = None
+executor: Optional[ThreadPoolExecutor] = None
+
+def get_executor() -> ThreadPoolExecutor:
+    """Returns the global executor, initializing it if necessary."""
+    global executor, config
+    if executor is None:
+        if config is None:
+            config = Config()
+        app_config = getattr(config.baseConfig, "application", None)
+        pool_size = getattr(app_config, "threadPoolSize", 20)
+        executor = ThreadPoolExecutor(max_workers=pool_size, thread_name_prefix="edge-router-pool")
+    return executor
+
+async def setup_routers(server_cfg, rules: RoutingRules, shared_executor: ThreadPoolExecutor):
     """Parses [[server.routers]] configuration and provisions the active_routers dictionary."""
     global active_routers
+    
+    # Conditional imports to prevent model library dependencies on all platforms
+    from gemini_router.main import GeminiRouter
+    
     if not server_cfg or not hasattr(server_cfg, "routers"):
         print("WARNING: No [[server.routers]] defined in configuration. Routing will fail.")
         return
@@ -70,28 +86,45 @@ async def setup_routers(server_cfg, rules: RoutingRules):
             
         print(f"Initializing router '{name}' via provider '{provider}'...")
         
+        builder = (RouterBuilder()
+                  .with_executor(shared_executor)
+                  .with_rules(rules))
+        
         if provider == "gemini":
-            active_routers[name] = (RouterBuilder()
-                                    .with_provider(GeminiRouter)
-                                    .with_rules(rules)
-                                    .build())
+            active_routers[name] = builder.with_provider(GeminiRouter).build()
                                     
         elif provider == "auto_local":
+            vllm_available = False
+            try:
+                from vllm_router.main import VllmRouter
+                vllm_available = True
+            except (ImportError, ModuleNotFoundError):
+                print(f"  vLLM not available for '{name}', checking for LlamaCpp...")
+
+            try:
+                from llama_cpp_router.main import LlamaCppRouter, LlamaCppWorkerPool
+                llama_available = True
+            except (ImportError, ModuleNotFoundError):
+                print(f"  LlamaCpp not available for '{name}'.")
+                llama_available = False
+
             model_path = getattr(r_cfg, "model_path", None) if hasattr(r_cfg, "model_path") else r_cfg.get("model_path")
             n_threads = getattr(r_cfg, "n_threads", 4) if hasattr(r_cfg, "n_threads") else r_cfg.get("n_threads", 4)
-            
+
             try:
                 import torch
-                if torch.cuda.is_available():
-                    print(f"  CUDA detected for '{name}', initializing VllmRouter.")
-                    active_routers[name] = VllmRouter(rules, model_path=model_path)
+                if torch.cuda.is_available() and vllm_available:
+                    print(f"  CUDA and vLLM detected for '{name}', initializing VllmRouter.")
+                    active_routers[name] = builder.with_provider(VllmRouter, model_path=model_path).build()
+                elif llama_available:
+                    print(f"  Initializing LlamaCppWorkerPool for '{name}'.")
+                    pool = LlamaCppWorkerPool(rules, shared_executor, model_path=model_path, num_workers=n_threads)
+                    await pool.initialize()
+                    active_routers[name] = pool
                 else:
-                    raise RuntimeError("CUDA not available")
+                    print(f"  No suitable provider found for local router '{name}'. Skipping.")
             except Exception as e:
-                print(f"  Falling back to LlamaCppWorkerPool for '{name}' due to: {e}")
-                pool = LlamaCppWorkerPool(rules, model_path=model_path, num_workers=n_threads)
-                await pool.initialize()
-                active_routers[name] = pool
+                print(f"  Failed to initialize local router '{name}': {e}")
         else:
             print(f"Unknown provider '{provider}' for router '{name}'")
 
@@ -105,14 +138,24 @@ async def startup_event():
     args, unknown = parser.parse_known_args()
     
     config = Config()
+    shared_executor = get_executor()
+    
     server_cfg = getattr(config.baseConfig, "server", None)
     
     init_otel(config)
     tracer = get_tracer("edgerouter_service")
     rules = load_rules(args.rules)
     
-    await setup_routers(server_cfg, rules)
+    await setup_routers(server_cfg, rules, shared_executor)
     print(f"EdgeRouter service started with rules from: {args.rules}. Active routers: {list(active_routers.keys())}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Gracefully shuts down the global executor."""
+    global executor
+    if executor:
+        print("Shutting down EdgeRouter thread pool...")
+        executor.shutdown(wait=True)
 
 app.include_router(auth.router)
 
@@ -141,10 +184,11 @@ async def route_query(request: RouteRequest, req: Request):
         if config is None:
             config = Config()
         
+        shared_executor = get_executor()
         rules_path = "rules.toml"
         rules = load_rules(rules_path)
         server_cfg = getattr(config.baseConfig, "server", None)
-        await setup_routers(server_cfg, rules)
+        await setup_routers(server_cfg, rules, shared_executor)
 
     ctx = extract(req.headers)
 
@@ -160,17 +204,15 @@ async def route_query(request: RouteRequest, req: Request):
         if not target_router:
             span.set_attribute("error", True)
             span.set_attribute("error.message", f"Router not configured for model: {request.model}")
-            raise HTTPException(status_code=404, detail=f"Router not configured for model: {request.model}")
+            raise HTTPException(status_code=400, detail=f"Unsupported model: {request.model}")
 
-        # Execute routing dynamically based on available interface
-        if hasattr(target_router, "route_async") and callable(getattr(target_router, "route_async")):
-            outcome = await target_router.route_async(request.prompt)
-        elif hasattr(target_router, "route") and callable(getattr(target_router, "route")):
-            outcome = await anyio.to_thread.run_sync(target_router.route, request.prompt)
-        else:
+        # Execute routing via the async interface
+        try:
+            outcome = await target_router.route(request.prompt)
+        except Exception as e:
             span.set_attribute("error", True)
-            span.set_attribute("error.message", f"Invalid router interface for {request.model}")
-            raise HTTPException(status_code=500, detail=f"Invalid router interface for {request.model}")
+            span.set_attribute("error.message", str(e))
+            raise HTTPException(status_code=500, detail=f"Routing failed: {e}")
             
         span.set_attribute("router.outcome", outcome)
         return RouteResponse(route=outcome)
