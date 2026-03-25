@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import json
+import time
 import asyncio
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor
@@ -92,9 +93,14 @@ class GeminiRouter(StatelessRouter):
         with self.tracer.start_as_current_span("origami_gemini.route") as span:
             span.set_attribute("router.query", user_query)
             span.set_attribute("router.environment", self.environment)
+            span.set_attribute("router.model_name", self.model_name)
             
+            start_time = time.time()
             # Execute the blocking call in the shared thread pool
             response = await loop.run_in_executor(self.executor, _call_gemini)
+            
+            latency = time.time() - start_time
+            span.set_attribute("router.latency", latency)
             
             # Extract token usage metadata from Gemini response
             if response.usage_metadata:
@@ -106,6 +112,7 @@ class GeminiRouter(StatelessRouter):
                 outcome = str(data.get("route", "fallback"))
                 span.set_attribute("router.outcome", outcome)
                 return outcome
-            except (json.JSONDecodeError, KeyError, TypeError):
+            except Exception as e:
+                span.record_exception(e)
                 span.set_attribute("router.outcome", "fallback")
                 return "fallback"

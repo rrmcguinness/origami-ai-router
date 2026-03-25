@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import json
+import time
 from pathlib import Path
 from typing import Final, Dict, Any, Optional
 from concurrent.futures import ThreadPoolExecutor
@@ -106,8 +107,10 @@ class LlamaCppRouter(StatelessRouter):
         loop = asyncio.get_running_loop()
         
         def _sync_route():
-            with self.tracer.start_as_current_span("origami_llama_cpp.route_sync") as span:
+            with self.tracer.start_as_current_span("origami_llama_cpp.route") as span:
                 span.set_attribute("router.query", user_query)
+                span.set_attribute("router.environment", os.environ.get("RUNTIME_ENV", "None"))
+                span.set_attribute("router.model_name", str(self.config.model_path))
                 
                 # Explicitly list available agents for structural grounding
                 router_types = ", ".join([a.name for a in self.rules.agents])
@@ -138,26 +141,31 @@ class LlamaCppRouter(StatelessRouter):
                         {"role": "system", "content": instruction_prompt},
                         {"role": "user", "content": user_content}
                     ]
-                
-                response: Dict[str, Any] = self.llm.create_chat_completion(
-                    messages=messages,
-                    grammar=self.grammar,
-                    temperature=0.0
-                )
-                
-                if "usage" in response:
-                    span.set_attribute("router.input_tokens", response["usage"].get("prompt_tokens", 0))
-                    span.set_attribute("router.output_tokens", response["usage"].get("completion_tokens", 0))
-                    
                 try:
+                    start_time = time.time()
+                    response: Dict[str, Any] = self.llm.create_chat_completion(
+                        messages=messages,
+                        grammar=self.grammar,
+                        temperature=0.0
+                    )
+                    latency = time.time() - start_time
+                    span.set_attribute("router.latency", latency)
+                    
+                    if "usage" in response:
+                        span.set_attribute("router.input_tokens", response["usage"].get("prompt_tokens", 0))
+                        span.set_attribute("router.output_tokens", response["usage"].get("completion_tokens", 0))
+                        
                     content = response['choices'][0]['message']['content']
                     # Some versions of llama-cpp might return conversational text despite the grammar
                     # if the grammar isn't strictly enforced on the first token. 
                     # We'll parse the JSON safely.
                     data = json.loads(content)
-                    return str(data.get("route", "fallback"))
-                except (KeyError, IndexError, json.JSONDecodeError) as e:
+                    outcome = str(data.get("route", "fallback"))
+                    span.set_attribute("router.outcome", outcome)
+                    return outcome
+                except Exception as e:
                     span.record_exception(e)
+                    span.set_attribute("router.outcome", "fallback")
                     return "fallback"
         
         return await loop.run_in_executor(self.executor, _sync_route)
@@ -179,7 +187,7 @@ class LlamaCppWorkerPool(StatelessRouter):
         self.num_workers = config.n_threads
         
         self.workers: asyncio.Queue[LlamaCppRouter] = asyncio.Queue()
-        self.tracer = get_tracer("llama_cpp_worker_pool")
+        self.tracer = get_tracer("origami_llama_cpp_worker_pool")
         self.initialized = False
         
     async def initialize(self):
@@ -197,11 +205,24 @@ class LlamaCppWorkerPool(StatelessRouter):
         if not self.initialized:
             await self.initialize()
             
-        with self.tracer.start_as_current_span("llama_cpp_worker_pool.route") as span:
+        with self.tracer.start_as_current_span("origami_llama_cpp_worker_pool.route") as span:
+            span.set_attribute("router.query", user_query)
+            span.set_attribute("router.environment", os.environ.get("RUNTIME_ENV", "None"))
+            span.set_attribute("router.model_name", str(self.model_path))
+            
             worker = await self.workers.get()
             try:
+                start_time = time.time()
                 # Delegate to the worker's async route method
-                return await worker.route(user_query, context_summary=context_summary)
+                outcome = await worker.route(user_query, context_summary=context_summary)
+                latency = time.time() - start_time
+                span.set_attribute("router.latency", latency)
+                span.set_attribute("router.outcome", outcome)
+                return outcome
+            except Exception as e:
+                span.record_exception(e)
+                span.set_attribute("router.outcome", "fallback")
+                return "fallback"
             finally:
                 await self.workers.put(worker)
 

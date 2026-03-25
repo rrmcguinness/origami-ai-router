@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import json
+import time
 from pathlib import Path
 from typing import Final, Dict, Any, Optional
 import asyncio
@@ -94,8 +95,10 @@ class VllmRouter(StatelessRouter):
         """
         Routes the user query using asynchronous vLLM continuous batching block.
         """
-        with self.tracer.start_as_current_span("origami_vllm.route_vllm") as span:
+        with self.tracer.start_as_current_span("origami_vllm.route") as span:
             span.set_attribute("router.query", user_query)
+            span.set_attribute("router.environment", self.environment)
+            span.set_attribute("router.model_name", str(self.config.model_path))
             request_id = str(uuid.uuid4())
             span.set_attribute("router.vllm_request_id", request_id)
             
@@ -107,6 +110,7 @@ class VllmRouter(StatelessRouter):
             formatted_prompt = f"<bos><start_of_turn>system\n{self.system_prompt}<end_of_turn>\n<start_of_turn>user\n{user_input}\nRoute:<end_of_turn>\n<start_of_turn>model\n"
             
             try:
+                start_time = time.time()
                 results_generator = self.engine.generate(
                     formatted_prompt, 
                     self.sampling_params, 
@@ -116,6 +120,9 @@ class VllmRouter(StatelessRouter):
                 final_output = None
                 async for request_output in results_generator:
                     final_output = request_output
+                
+                latency = time.time() - start_time
+                span.set_attribute("router.latency", latency)
                 
                 text = final_output.outputs[0].text
                 
@@ -127,15 +134,21 @@ class VllmRouter(StatelessRouter):
                 
                 try:
                     data = json.loads(text)
-                    return str(data.get("route", "fallback"))
+                    outcome = str(data.get("route", "fallback"))
+                    span.set_attribute("router.outcome", outcome)
+                    return outcome
                 except (json.JSONDecodeError, KeyError, TypeError):
                     import re
                     match = re.search(r'"route"\s*:\s*"([^"]+)"', text)
                     if match:
-                        return match.group(1)
+                        outcome = match.group(1)
+                        span.set_attribute("router.outcome", outcome)
+                        return outcome
+                    span.set_attribute("router.outcome", "fallback")
                     return "fallback"
             except Exception as e:
                 span.record_exception(e)
+                span.set_attribute("router.outcome", "fallback")
                 return "fallback"
 
 def get_current_file_path(filename: str) -> Path:
