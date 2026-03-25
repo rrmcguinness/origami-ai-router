@@ -69,7 +69,7 @@ async def run_load_test(tracer, target_model: str):
     results = []
     
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
-        print(f"Warming up Local AI Router for model '{target_model}'...")
+        print(f"Warming up Local AI Router (LlamaCpp) for model '{target_model}'...")
         await client.post("http://test/route", json={"model": target_model, "prompt": "warmup"}, timeout=120.0)
         print("Warmup complete. Starting load generation.")
         
@@ -81,9 +81,9 @@ async def run_load_test(tracer, target_model: str):
         
     return results, start_time, end_time
 
-def test_gemma_load():
+def test_llama_cpp_load():
     """
-    Executes a load test of 1000 requests against the Gemma router.
+    Executes a load test against the LlamaCpp (formerly Gemma) router.
     Uses asyncio to ensure concurrent execution from the client side.
     Instrumented with OTel spans for trace analysis.
     """
@@ -92,9 +92,9 @@ def test_gemma_load():
     with tracer.start_as_current_span("local_router_load_test.total_execution") as parent_span:
         cfg = Config()
         test_cfg = getattr(cfg.baseConfig, "test", None)
-        target_model = getattr(test_cfg, "model", "gemma")
+        target_model = getattr(test_cfg, "model", "llama")
         
-        print(f"\nStarting INSTRUMENTED ASYNC load test for model '{target_model}': {TOTAL_REQUESTS} requests...")
+        print(f"\nStarting INSTRUMENTED ASYNC load test for LlamaCpp model '{target_model}': {TOTAL_REQUESTS} requests...")
         
         results, start_time, end_time = asyncio.run(run_load_test(tracer, target_model))
         

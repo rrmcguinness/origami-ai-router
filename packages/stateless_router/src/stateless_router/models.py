@@ -18,7 +18,9 @@ from pydantic import BaseModel, Field
 class AgentDefinition(BaseModel):
     name: str
     description: str
+    instructions: Optional[str] = None
     examples: List[str] = Field(default_factory=list)
+    salience: int = 0  # Higher value means higher priority for the prompt! 💋
 
 class RoutingRules(BaseModel):
     agents: List[AgentDefinition]
@@ -28,10 +30,17 @@ class RoutingRules(BaseModel):
     def to_system_prompt(self) -> str:
         """
         Converts the structured rules into a flattened system prompt.
+        Agents are sorted by salience (descending) to break ties. 🏎️💨
         """
         prompt = "You are a stateless routing agent. Analyze the user's prompt and route it correctly.\n\nAGENTS:\n"
-        for agent in self.agents:
+        
+        # Sort by salience (descending) 💋
+        sorted_agents = sorted(self.agents, key=lambda a: a.salience, reverse=True)
+        
+        for agent in sorted_agents:
             prompt += f"- {agent.name}: {agent.description}\n"
+            if agent.instructions:
+                prompt += f"  Instruction: {agent.instructions}\n"
             if agent.examples:
                 prompt += f"  Examples: {', '.join(agent.examples)}\n"
         

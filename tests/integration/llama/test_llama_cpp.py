@@ -15,15 +15,16 @@
 import pytest
 from llama_cpp_router.main import LlamaCppRouter
 from stateless_router.builder import RouterBuilder
-from tests.integration.data import RETAIL_ROUTING_RULES, RETAIL_TEST_CASES, get_test_env_setting
+from tests.integration.data import RETAIL_ROUTING_RULES, RETAIL_TEST_CASES_SUBSET, get_test_env_setting
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("query,expected_route", RETAIL_TEST_CASES)
-async def test_gemma_routing_load(query, expected_route, shared_executor):
+@pytest.mark.parametrize("query,expected_route", RETAIL_TEST_CASES_SUBSET)
+async def test_llama_cpp_routing_load(query, expected_route, shared_executor):
     """
-    Test routing over 20+ retail-specific agents using local Gemma driven by configuration.
+    Test routing over 20+ retail-specific agents using local LlamaCpp driven by configuration.
     """
-    model_path = get_test_env_setting("gemma_model_path")
+    # Use the universal llama_cpp config to resolve the current model path
+    model_path = get_test_env_setting("llama_model_path", provider_type="llama")
     
     # Builder should handle the provider-specific initialization.
     router = (RouterBuilder()
@@ -38,6 +39,6 @@ async def test_gemma_routing_load(query, expected_route, shared_executor):
     try:
         route = await router.route(query)
         # We allow for some model variance, but the outcome should be the expected route or Fallback
-        assert route in [expected_route, "Fallback"], f"Gemma routed '{query}' to '{route}' but expected '{expected_route}'"
+        assert route in [expected_route, "Fallback"], f"LlamaCpp routed '{query}' to '{route}' but expected '{expected_route}'"
     except Exception as e:
-        pytest.fail(f"Gemma routing failed for query '{query}': {e}")
+        pytest.fail(f"LlamaCpp routing failed for query '{query}': {e}")

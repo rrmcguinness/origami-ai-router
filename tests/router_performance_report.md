@@ -40,7 +40,7 @@ sequenceDiagram
     participant O as Stateful Orchestrator
     participant DB as Conversation State (Redis/Firestore)
     participant ER as EdgeRouter (Stateless)
-    participant SA as Specialized Agent (e.g. CustomerCare)
+    participant SA as Specialized Agent (e.g. OrderSupport)
 
     U->>O: "Where is my package #88219?"
     O->>DB: Load Conversation History
@@ -49,7 +49,7 @@ sequenceDiagram
     rect rgb(240, 248, 255)
     Note over O,ER: High-Speed Routing Phase
     O->>ER: Route Query (Prompt + History Metadata)
-    ER-->>O: { "route": "CustomerCare" }
+    ER-->>O: { "route": "OrderSupport" }
     end
 
     O->>SA: Invoke Specialized Logic

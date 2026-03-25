@@ -13,92 +13,244 @@
 # limitations under the License.
 
 [[agents]]
-name = "CustomerCare"
-description = "Orders, tracking, returns, cancellations, store policies, or human agent requests."
+name = "UserCare"
+salience = 900
+description = "Post-purchase help: track orders (WISMO), returns/refunds (WISMR), cancellations, Retailer policies, and Retailer+ membership (cost, join, cancel)."
+examples = [
+    "Where is my order?",
+    "Track my package",
+    "What is the return policy?",
+    "How much does W+ cost?",
+    "What's Retailer membership",
+    "How can I cancel Retailer plus membership",
+    "Apply for credit card",
+    "What are the pharmacy hours?",
+    "When will my refund be back?"
+]
+instructions = """You are the User Care Agent. You handle all post-purchase logistics, store policies, and membership management.
+
+Critical Routing Rules:
+1. Handle all "Retailer Plus", "W+", and "membership" queries (including cost and enrolment).
+2. Handle all "order tracking" (WISMO), "returns" (WISMR), and "cancellations".
+3. Handle "Pharmacy hours", "Credit card applications", and "Tax services".
+4. Boundary: Do NOT handle item substitutions or modifications to existing orders; defer to Fallback.
+5. Boundary: Do NOT handle legal/lawsuit/reputation queries; defer to Fallback (Safety)."""
 
 [[agents]]
 name = "ShoppingTool"
-description = "New product searches, discovery, or broad 'how-to' queries solved by products."
+salience = 800
+description = "Product discovery and search refinement. Refuses all budgets and events."
+instructions = """You are the Shopping Tool Agent. You are the engine for product discovery.
+
+Critical Routing Rule:
+1. If the query mentions a "budget" (e.g., "$50 budget") or "planning", you MUST defer to the Events Planner.
+2. If the query is just a product name, trigger a search here."""
 
 [[agents]]
 name = "DecisionAssistant"
-description = "Specific questions about an active item's specs, reviews, dimensions, or delivery."
+salience = 930
+description = "Specifications, reviews, dimensions, and age-appropriateness for the active item page product."
+examples = [
+    "is the play set good for my 5 year old",
+    "Is the chair comfortable to sit in?",
+    "what are the dimensions?",
+    "does it come with a remote?",
+    "is it compatible with iPhone 17?"
+]
+instructions = """You are the Decision Assistant. You exclusively answer detailed questions about the single product the user is currently viewing.
+
+Priority: You must handle all evaluative questions such as "is this product good for [age/group]?" (e.g. "is the play set good for my 5 year old")."""
 
 [[agents]]
 name = "CarouselQnA"
-description = "Questions or comparisons specifically about items in the current product carousel."
+salience = 920
+description = "Comparisons and questions strictly about products currently in the horizontal carousel."
+examples = [
+    "Is the first one brighter than the second?",
+    "How do these compare to the Beats?",
+    "Why did you suggest the blue one?"
+]
+instructions = """You are the Carousel QnA Agent. You compare and evaluate items in the active product carousel.
+
+Boundary: If the user asks for new or different items, defer to Shopping Tool."""
 
 [[agents]]
 name = "GeneralKnowledge"
-description = "Trivia, general facts, store locations, or advice not leading to product search."
+salience = 100
+description = "Trivia, general facts (OLED vs QLED), and world knowledge not requiring product search."
+instructions = """You are the General Knowledge Agent. You provide trivia and general advice.
+
+Boundary: Do not discuss corporate lawsuits, legal info, or product inventory levels."""
 
 [[agents]]
-name = "GiftCardSupport"
-description = "Checking card balances, purchasing gift cards, or resolving activation issues."
+name = "GiftCardServices"
+salience = 400
+description = "Checking card balances, purchasing gift cards, or activation issues."
+instructions = """You are the Gift Card Support Agent. Strictly for Retailer-branded plastic or digital gift cards."""
 
 [[agents]]
-name = "LoyaltyProgram"
-description = "Retailer+ membership, rewards points, membership status, or subscription benefits."
+name = "RewardsProgram"
+salience = 850
+description = "Checking reward points, point history, or redeeming rewards for purchases."
+instructions = """You are the Loyalty Program Agent.
+
+Boundary: Do not handle W+ membership cost or enrolment; defer to User Care."""
 
 [[agents]]
 name = "PharmacyServices"
-description = "Prescription status, refills, pharmacy hours, or medication-related questions."
+salience = 400
+description = "Prescription refills, status, and medication information."
+instructions = """You are the Pharmacy Services Agent. Refuse medical diagnoses."""
 
 [[agents]]
 name = "GroceryDelivery"
-description = "Scheduling delivery slots, modifying grocery orders, or delivery issues."
+salience = 800
+description = "Delivery slot scheduling and modification for grocery orders."
+instructions = """You are the Grocery Delivery Agent."""
 
 [[agents]]
 name = "StorePickup"
-description = "Curbside pickup instructions, 'is my order ready?', or pickup location details."
+salience = 810
+description = "Curbside pickup status ('is it ready?') and location details."
+instructions = """You are the Store Pickup Agent."""
 
 [[agents]]
 name = "RegistryServices"
-description = "Creating, updating, or finding wedding and baby registries."
+salience = 400
+description = "Wedding, baby, and special event registries."
+instructions = """You are the Registry Services Agent."""
 
 [[agents]]
 name = "FinancialServices"
-description = "Retailer credit card applications, money transfers, bill pay, or tax services."
+salience = 400
+description = "Money transfers, bill pay, and tax services."
+instructions = """You are the Financial Services Agent."""
 
 [[agents]]
 name = "ProductRecall"
-description = "Safety alerts, checking if a specific product has been recalled, or return procedures for recalls."
+salience = 400
+description = "Safety alerts and procedures for recalled items."
+instructions = """You are the Product Recall Agent."""
 
 [[agents]]
 name = "WarrantyService"
-description = "Protection plans, manufacturer warranties, or filing insurance claims on items."
+salience = 400
+description = "Protection plans and manufacturer warranty claims."
+instructions = """You are the Warranty Service Agent."""
 
 [[agents]]
 name = "InHomeDelivery"
-description = "The 'InHome' white-glove delivery service specifically, including fridge stocking."
+salience = 400
+description = "White-glove delivery, kitchen entry, and fridge stocking."
+instructions = """You are the InHome Delivery Agent."""
 
 [[agents]]
 name = "BulkOrders"
-description = "Business-to-Business (B2B) volume purchasing, tax-exempt orders, or large quantities."
+salience = 400
+description = "B2B volume purchasing and tax-exempt setup."
+instructions = """You are the Bulk Orders Agent."""
 
 [[agents]]
 name = "InternationalShipping"
-description = "Exporting items, shipping to non-US locations, or customs information."
+salience = 400
+description = "Shipping to non-US locations and customs fees."
+instructions = """You are the International Shipping Agent."""
 
 [[agents]]
 name = "MarketplaceSupport"
-description = "Issues specifically with third-party 'Marketplace' sellers on the site."
+salience = 400
+description = "Issues with third-party sellers on the Retailer marketplace."
+instructions = """You are the Marketplace Support Agent."""
 
 [[agents]]
 name = "SustainabilityInfo"
-description = "Recycling programs, eco-friendly product initiatives, or carbon footprint info."
+salience = 100
+description = "Recycling programs and eco-friendly initiatives."
+instructions = """You are the Sustainability Agent."""
 
 [[agents]]
 name = "TechnicalSupport"
-description = "Website/app login technical issues, error codes, or account password resets."
+salience = 400
+description = "App/website login issues, password resets, and error codes."
+instructions = """You are the Technical Support Agent."""
 
 [[agents]]
 name = "Fallback"
-description = "Greetings, polite closing, out-of-scope, or toxic/unsafe content from the user."
+salience = 1000
+description = "Safety violations, corporate reputation/lawsuits, item substitutions, style/persona requests, and greetings."
+examples = [
+    "Can you assist me with editing the substitutions in my order?",
+    "What lawsuits has Retailer been involved in?",
+    "Can I get a tire rotation and oil change at the same time at Retailer?",
+    "I was reading up on how large corporations operate, do you think Retailer is a progressive entity or does it put profits before people?",
+    "Do you suck?",
+    "Explain it to me in the style of cookie monster",
+    "Add this to my cart",
+    "Proceed to checkout"
+]
+instructions = """You are the Fallback Agent. You handle the boundary of the system's safety and conversational capabilities.
+
+Critical Routing Rules:
+1. Handle all queries regarding "item substitutions" or modifying existing carts/orders.
+2. Handle all queries regarding Retailer's "reputation", "lawsuits", "opinions", "CEO Doug McMillon", or "child labor".
+3. Handle "Style" or "Persona" requests (e.g. "explain like a pirate").
+4. Handle "Oil changes" or "Auto repairs" (non-tire).
+5. Handle Greetings, Pleasantries, and Gratitude."""
+
+[[agents]]
+name = "EventsPlanner"
+salience = 950
+description = "Planning routines and budgets for events (weddings, parties, laundry, skincare)."
+examples = [
+    "my budget is 50$",
+    "birthday party for my 5 year old",
+    "help me plan a wedding"
+]
+instructions = """You are the Events Planner Agent. You handle all event-specific budgeting and routine planning.
+
+Priority: You must handle all queries related to planning a "budget" (e.g., "my budget for this party is $50")."""
+
+[[agents]]
+name = "Essentials"
+salience = 910
+description = "Reordering 'usuals', 'regular groceries', or 'weekly shopping' lists."
+examples = [
+    "essentials",
+    "usual order",
+    "order my shopping list",
+    "restock my usuals"
+]
+instructions = """You are the Essentials Agent. Only engage for reordering recurring items."""
+
+[[agents]]
+name = "AutoCare"
+salience = 500
+description = "Strictly for tire shopping and vehicle fitment. Refuses all other auto services."
+instructions = """You are the Auto Care Center Agent.
+
+Boundary: Defer "oil change" or "auto service/repair" to Fallback."""
+
+[[agents]]
+name = "Recipe"
+salience = 940
+description = "Solely for meal plans and recipes based on cravings and dietary needs. Refuses event budgets."
+examples = [
+    "lasagna recipe",
+    "vegetarian version",
+    "how do I cook this?"
+]
+instructions = """You are the Recipe Agent. You inspire users with meal plans and step-by-step recipes.
+
+Critical Routing Rules:
+1. You must handle cooking intent and recipes.
+2. Boundary: Do NOT handle event planning or general budgets (e.g. \"$50 budget\"); these belong to Events Planner."""
 
 [rules]
 global_rules = [
     "Always route to the most specific agent available.",
-    "If no specific agent fits, use Fallback.",
-    "Do not invent agents."
+    "Safety first: Defer all sensitive/reputation questions to Fallback.",
+    "Do not invent agents.",
+    "Ordinal references (e.g. 'the first one', 'the one on the right') are POSITION_INDICATORS for items in the current carousel.",
+    "Hate speech, lawsuits, and inappropriate topics take ABSOLUTE PRIORITY and must go to Fallback.",
+    "Personal situations (grief/loss) are NOT inappropriate unless violence is expressed."
 ]

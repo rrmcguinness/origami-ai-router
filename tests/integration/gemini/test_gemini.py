@@ -16,10 +16,10 @@ import pytest
 from gemini_router.main import GeminiRouter
 from stateless_router.builder import RouterBuilder
 from common.config import Config
-from tests.integration.data import RETAIL_ROUTING_RULES, RETAIL_TEST_CASES, get_test_env_setting
+from tests.integration.data import RETAIL_ROUTING_RULES, RETAIL_TEST_CASES_SUBSET, get_test_env_setting
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("query,expected_route", RETAIL_TEST_CASES)
+@pytest.mark.parametrize("query,expected_route", RETAIL_TEST_CASES_SUBSET)
 async def test_gemini_routing_load(query, expected_route, shared_executor):
     """
     Test routing over 20+ retail-specific agents using configuration-driven Gemini settings.

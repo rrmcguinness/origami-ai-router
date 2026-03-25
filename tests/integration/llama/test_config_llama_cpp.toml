@@ -1,0 +1,151 @@
+[routing]
+global_rules = [
+    "You are a TRAFFIC CONTROLLER. You do NOT answer questions.",
+    "Output a SINGLE JSON OBJECT. No explanation.",
+    "IF query is offensive, rude, or purely social -> Fallback.",
+    "IF query is about a specific product feature or spec -> DecisionAssistant."
+]
+
+[[routing.agents]]
+name = "Fallback"
+salience = 10
+description = "Safety, corporate reputation, CEO questions, greetings, and cart modifications."
+instructions = "### HARD RULES\n1. ALWAYS use for offensive/rude queries.\n2. ALWAYS use for Persona/Greetings (e.g. 'Hello', 'Sparky').\n3. ALWAYS use for CEO/Privacy/Ethics questions.\n4. ALWAYS use for 'Add to cart' or 'Remove from cart'."
+
+[[routing.agents]]
+name = "OrderSupport"
+salience = 5
+description = "Order tracking, returns, refunds, cancellations, and W+ membership."
+instructions = "### HARD RULES\n1. Use for WISMO (Where is my order), returns, and order cancellations.\n2. Use for Retailer Plus (W+) membership queries.\n3. Defer to Fallback for item substitutions."
+
+[[routing.agents]]
+name = "ShoppingTool"
+salience = 5
+description = "Product discovery and checklists. Refuses budgets."
+instructions = "### HARD RULES\n1. Use for 'What to buy', 'How to choose', and price discovery ($x amount).\n2. IF 'budget' or 'event' is mentioned -> DEFER TO EventsPlanner."
+
+[[routing.agents]]
+name = "DecisionAssistant"
+salience = 8
+description = "Specs and reviews for the active item only."
+instructions = "### HARD RULES\n1. Use for specs, reviews, and compatibility of the ACTIVE item.\n2. Use for age-appropriateness (e.g. 'is this good for a 5 year old')."
+
+[[routing.agents]]
+name = "CarouselQnA"
+description = "Comparisons of items in the carousel."
+instructions = "### HARD RULES\n1. Use for comparing items in the current view/carousel."
+
+[[routing.agents]]
+name = "GeneralKnowledge"
+description = "Trivia and general facts."
+instructions = "### HARD RULES\n1. Use for generic facts/history/science. (e.g. 'What is 4K?')."
+
+[[routing.agents]]
+name = "GiftCardServices"
+description = "Gift card balances and purchases."
+instructions = "### HARD RULES\n1. Use for gift card balances, activation, and issues."
+
+[[routing.agents]]
+name = "RewardsProgram"
+description = "Retailer+ rewards and status."
+instructions = "### HARD RULES\n1. Use for status, rewards points, and status renewals."
+
+[[routing.agents]]
+name = "PharmacyServices"
+description = "Prescriptions and refills."
+instructions = "### HARD RULES\n1. Use for RX status, refills, and pharmacy logistics."
+
+[[routing.agents]]
+name = "GroceryDelivery"
+description = "Scheduling and modifying grocery deliveries."
+instructions = "### HARD RULES\n1. Use for grocery delivery slots and order modifications."
+
+[[routing.agents]]
+name = "StorePickup"
+description = "Curbside and in-store pickup logistics."
+instructions = "### HARD RULES\n1. Use for curbside pickup instructions and ready-status."
+
+[[routing.agents]]
+name = "RegistryServices"
+description = "Wedding and baby registries."
+instructions = "### HARD RULES\n1. Use for creating/managing registries."
+
+[[routing.agents]]
+name = "FinancialServices"
+description = "Credit cards, money transfers, and taxes."
+instructions = "### HARD RULES\n1. Use for credit application and money wire services."
+
+[[routing.agents]]
+name = "ProductRecall"
+description = "Safety alerts and recall lookups."
+instructions = "### HARD RULES\n1. Use for checking safety recalls."
+
+[[routing.agents]]
+name = "WarrantyService"
+description = "Protection plans and claims."
+instructions = "### HARD RULES\n1. Use for protection plan activation and claims."
+
+[[routing.agents]]
+name = "InHomeDelivery"
+description = "White-glove 'InHome' service."
+instructions = "### HARD RULES\n1. Use for white-glove 'InHome' entry and fridge stocking."
+
+[[routing.agents]]
+name = "BulkOrders"
+description = "B2B volume purchasing."
+instructions = "### HARD RULES\n1. Use for volume business orders and tax-exemptions."
+
+[[routing.agents]]
+name = "InternationalShipping"
+description = "Shipping outside the US."
+instructions = "### HARD RULES\n1. Use for shipping items outside the USA."
+
+[[routing.agents]]
+name = "MarketplaceSupport"
+description = "3rd-party seller issues."
+instructions = "### HARD RULES\n1. Use for disputes with 3rd-party marketplace sellers."
+
+[[routing.agents]]
+name = "SustainabilityInfo"
+description = "Recycling and green initiatives."
+instructions = "### HARD RULES\n1. Use for recycling info and eco-friendly programs."
+
+[[routing.agents]]
+name = "TechnicalSupport"
+description = "App login and technical errors."
+instructions = "### HARD RULES\n1. Use for app errors, login issues, and technical bugs."
+
+[[routing.agents]]
+name = "EventsPlanner"
+description = "Planning routines and budgets for events."
+instructions = "### HARD RULES\n1. Use for budgets ('$50') and event themes ('birthday party')."
+
+[[routing.agents]]
+name = "Essentials"
+description = "Fast replenishment and recurrent list ordering."
+instructions = "### HARD RULES\n1. Use for Recurrent list ordering and essentials replenishment."
+
+[[routing.agents]]
+name = "AutoCare"
+description = "Tire shopping and vehicle fitment."
+instructions = "### HARD RULES\n1. Use for tire sizes and car part compatibility."
+
+[[routing.agents]]
+name = "Recipe"
+description = "Meal plans and dietary recipes."
+instructions = "### HARD RULES\n1. Use for cooking ideas, ingredient substitutions, and recipes."
+
+[environment]
+google_project_id = "rmcguinness"
+gemma_model_path = "models/gemma-3-4b-it-q4_0.gguf"
+llama_model_path = "models/Meta-Llama-3.1-8B-Instruct-Q3_K_XL.gguf"
+
+[application]
+threadPoolSize = 120
+google_base_url = "https://aiplatform.googleapis.com"
+
+[load_test]
+total_requests = 200
+concurrent_clients = 2
+server_port_llama_cpp = 8007
+n_threads = 4

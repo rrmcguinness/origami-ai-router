@@ -53,5 +53,5 @@ If this prints **`GPU Offload active: True`**, your setup was successful!
 
 You can also run the integration tests to observe improved processing speeds:
 ```bash
-uv run pytest tests/integration/test_gemma_load.py
+uv run pytest tests/integration/test_llama_cpp_load.py
 ```

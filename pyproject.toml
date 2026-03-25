@@ -15,6 +15,7 @@ dependencies = [
     "fastapi>=0.135.1",
     "uvicorn>=0.42.0",
     "google-auth>=2.49.1",
+    "google-adk>=1.27.2",
 ]
 
 [dependency-groups]
@@ -33,6 +34,16 @@ build-backend = "uv_build"
 [tool.uv.workspace]
 members = [
     "packages/*",
+]
+
+[tool.uv]
+required-environments = [
+    "sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+override-dependencies = [
+    "grpcio-status==1.78.0",
+    "grpcio==1.78.0",
 ]
 
 [tool.uv.sources]

@@ -49,12 +49,23 @@ class LlamaCppRouter(StatelessRouter):
             
         logger.info(f"CUDA OFF-LOAD natively supported by llama_cpp: {llama_supports_gpu_offload()}")
 
+        # Auto-detect chat format from model filename
+        model_name_lower = str(model_path).lower()
+        if "llama-3" in model_name_lower:
+            chat_format = "llama-3"
+        elif "gemma" in model_name_lower:
+            chat_format = "gemma"
+        else:
+            chat_format = "gemma" # Default to gemma
+            
+        logger.info(f"Initialized LlamaCpp with chat_format: {chat_format} (detected from {model_path})")
+
         self.llm = Llama(
             model_path=str(model_path),
             n_ctx=4096,
             n_threads=n_threads,
             n_gpu_layers=-1, 
-            chat_format="gemma",
+            chat_format=chat_format,
             verbose=False
         )
         self.grammar = self._build_grammar()
@@ -90,15 +101,25 @@ class LlamaCppRouter(StatelessRouter):
             with self.tracer.start_as_current_span("llama_cpp_router.route_sync") as span:
                 span.set_attribute("router.query", user_query)
                 
-                user_input = f"User: {user_query}\nRoute:"
-                if context_summary:
-                    user_input = f"Reference Context: {context_summary}\n{user_input}"
-                    
+                # Explicitly list available agents for structural grounding
+                router_types = ", ".join([a.name for a in self.rules.agents])
+                
+                # Use as system prompt (chat_format handles the model-specific template tags)
+                instruction_prompt = (
+                    f"Constrain all responses to the following router types: {router_types}\n\n"
+                    f"{self.system_prompt}\n\n"
+                    "Your response MUST be a single JSON object containing only the 'route' key. "
+                    "Do not include any conversational text or explanation."
+                )
+                
+                # Constructing the message (llama-cpp-python formats these correctly per template)
+                messages = [
+                    {"role": "system", "content": instruction_prompt},
+                    {"role": "user", "content": f"Query: {user_query}\nRoute JSON:"}
+                ]
+                
                 response: Dict[str, Any] = self.llm.create_chat_completion(
-                    messages=[
-                        {"role": "system", "content": self.system_prompt},
-                        {"role": "user", "content": user_input}
-                    ],
+                    messages=messages,
                     grammar=self.grammar,
                     temperature=0.0
                 )
@@ -109,6 +130,9 @@ class LlamaCppRouter(StatelessRouter):
                     
                 try:
                     content = response['choices'][0]['message']['content']
+                    # Some versions of llama-cpp might return conversational text despite the grammar
+                    # if the grammar isn't strictly enforced on the first token. 
+                    # We'll parse the JSON safely.
                     data = json.loads(content)
                     return str(data.get("route", "Fallback"))
                 except (KeyError, IndexError, json.JSONDecodeError) as e:

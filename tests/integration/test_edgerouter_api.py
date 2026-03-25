@@ -20,7 +20,7 @@ from tests.integration.data import RETAIL_TEST_CASES
 client = TestClient(app)
 
 @pytest.mark.parametrize("query,expected_route", [
-    (RETAIL_TEST_CASES[0]), # Dynamically pulled from config (CustomerCare)
+    (RETAIL_TEST_CASES[0]), # Dynamically pulled from config (OrderSupport)
     (RETAIL_TEST_CASES[2]), # Dynamically pulled from config (ShoppingTool)
 ])
 def test_route_gemini(query, expected_route):
@@ -36,14 +36,17 @@ def test_route_gemini(query, expected_route):
     assert data["route"] in [expected_route, "Fallback"]
 
 @pytest.mark.parametrize("query,expected_route", [
-    (RETAIL_TEST_CASES[1]), # Dynamically pulled from config (CustomerCare)
-    (RETAIL_TEST_CASES[3]), # Dynamically pulled from config (DecisionAssistant)
+    ("Where is my milk?", "OrderSupport"),
+    ("lasagna recipe", "Recipe"),
+    ("What is the return policy हल्दी?", "OrderSupport"),
 ])
-def test_route_gemma(query, expected_route):
-    """Tests routing with Gemma using configuration-driven query/response pairs."""
+def test_route_llama_cpp(query, expected_route):
+    """
+    Test the /route endpoint for the llama_cpp provider.
+    """
     response = client.post(
         "/route",
-        json={"model": "gemma", "prompt": query}
+        json={"model": "llama", "prompt": query}
     )
     assert response.status_code == 200
     data = response.json()
