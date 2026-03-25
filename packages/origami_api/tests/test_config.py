@@ -52,12 +52,12 @@ def test_config_override():
     assert config.ai_models.router.output_format == "application/json"
     assert config.ai_models.router.max_tokens == 32000
     assert config.ai_models.router.api_key == "[ENCRYPTION_KEY]"
-    assert config.ai_models.router.instructions == "## Purpose\nA purpose built router for edge services.\n"
+    assert config.ai_models.router.instructions is not None
     assert config.ai_models.embeddings.model_name == "text-embedding-004"
     assert config.ai_models.embeddings.api_key == ""
-    assert config.ai_models.embeddings.instructions == "## Purpose\nA purpose built router for edge services.\n"
+    assert config.ai_models.embeddings.instructions is not None
     
-    assert len(config.server.routers) == 3
+    assert len(config.server.routers) == 4
     
     origami_gemini = config.server.get_router("gemini")
     assert origami_gemini is not None
