@@ -14,8 +14,9 @@
 
 from typing import Type, Any, Optional
 from concurrent.futures import ThreadPoolExecutor
-from .interface import StatelessRouter
-from .models import RoutingRules
+from edgerouter_api.interfaces import StatelessRouter
+from edgerouter_api.models import RoutingRules
+from edgerouter_api.config import RouterConfig
 
 class RouterBuilder:
     """
@@ -27,15 +28,17 @@ class RouterBuilder:
         self._router_class: Optional[Type[StatelessRouter]] = None
         self._rules: Optional[RoutingRules] = None
         self._executor: Optional[ThreadPoolExecutor] = None
-        self._config: dict[str, Any] = {}
+        self._config: Optional[RouterConfig] = None
+        self._kwargs: dict[str, Any] = {}
 
-    def with_provider(self, router_cls: Type[StatelessRouter], **kwargs: Any) -> 'RouterBuilder':
+    def with_provider(self, router_cls: Type[StatelessRouter], config: RouterConfig, **kwargs: Any) -> 'RouterBuilder':
         """
-        Sets the implementation class for the router.
-        Pass provider-specific arguments (e.g., model_path, api_key) via kwargs.
+        Sets the implementation class for the router alongside its configuration object.
+        Extra provider-specific overrides can be passed via kwargs.
         """
         self._router_class = router_cls
-        self._config.update(kwargs)
+        self._config = config
+        self._kwargs.update(kwargs)
         return self
 
     def with_rules(self, rules: RoutingRules) -> 'RouterBuilder':
@@ -60,5 +63,7 @@ class RouterBuilder:
             raise ValueError("Darling, you forgot to provide a router implementation.")
         if self._rules is None:
             raise ValueError("You can't route without rules. Provide a RoutingRules object.")
+        if self._config is None:
+            raise ValueError("A valid RouterConfig object must be provided.")
         
-        return self._router_class(rules=self._rules, executor=self._executor, **self._config)
+        return self._router_class(rules=self._rules, config=self._config, executor=self._executor, **self._kwargs)

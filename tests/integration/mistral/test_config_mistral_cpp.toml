@@ -1,0 +1,16 @@
+[application]
+threadPoolSize = 120
+
+[load_test]
+mistral_model_path = "models/Mistral-Nemo-Instruct-2407-Q4_K_M.gguf"
+total_requests = 200
+concurrent_clients = 2
+server_port_mistral_cpp = 8009
+n_threads = 4
+
+[server]
+[[server.routers]]
+name = "mistral"
+provider = "auto_local"
+model_path = "models/Mistral-Nemo-Instruct-2407-Q4_K_M.gguf"
+n_threads = 4

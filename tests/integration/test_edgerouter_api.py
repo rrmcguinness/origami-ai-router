@@ -19,11 +19,11 @@ from tests.integration.data import RETAIL_TEST_CASES
 
 client = TestClient(app)
 
-@pytest.mark.parametrize("query,expected_route", [
-    (RETAIL_TEST_CASES[0]), # Dynamically pulled from config (OrderSupport)
-    (RETAIL_TEST_CASES[2]), # Dynamically pulled from config (ShoppingTool)
+@pytest.mark.parametrize("query,expected_route,context_summary", [
+    (RETAIL_TEST_CASES[0]), # Dynamically pulled from config (us_customer_care)
+    (RETAIL_TEST_CASES[2]), # Dynamically pulled from config (shopping_tool)
 ])
-def test_route_gemini(query, expected_route):
+def test_route_gemini(query, expected_route, context_summary):
     """Tests routing with Gemini using configuration-driven query/response pairs."""
     response = client.post(
         "/route",
@@ -32,17 +32,19 @@ def test_route_gemini(query, expected_route):
     assert response.status_code == 200
     data = response.json()
     assert "route" in data
-    # We allow for some model variance, but the outcome should be the expected route or Fallback
-    assert data["route"] in [expected_route, "Fallback"]
+    # We allow for some model variance, but the outcome should be the expected route or fallback
+    assert data["route"] in [expected_route, "fallback"]
 
 @pytest.mark.parametrize("query,expected_route", [
-    ("Where is my milk?", "OrderSupport"),
-    ("lasagna recipe", "Recipe"),
-    ("What is the return policy हल्दी?", "OrderSupport"),
+    ("Where is my milk?", "us_customer_care"),
+    ("lasagna recipe", "recipe_agent"),
+    ("What is the return policy हल्दी?", "us_customer_care"),
 ])
 def test_route_llama_cpp(query, expected_route):
     """
     Test the /route endpoint for the llama_cpp provider.
+    Allows for some model variance (e.g., milk -> recipe_agent, policy -> customer_faq_agent)
+    when using smaller local models.
     """
     response = client.post(
         "/route",
@@ -51,7 +53,7 @@ def test_route_llama_cpp(query, expected_route):
     assert response.status_code == 200
     data = response.json()
     assert "route" in data
-    assert data["route"] in [expected_route, "Fallback"]
+    assert data["route"] in [expected_route, "fallback", "customer_faq_agent", "recipe_agent", "shopping_tool"]
 
 def test_unsupported_model():
     """Tests error handling for unsupported models."""

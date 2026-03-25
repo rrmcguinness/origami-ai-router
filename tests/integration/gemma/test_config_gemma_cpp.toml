@@ -1,0 +1,16 @@
+[application]
+threadPoolSize = 120
+
+[load_test]
+gemma_model_path = "models/gemma-3-12b-it-q4_k_m.gguf"
+total_requests = 200
+concurrent_clients = 2
+server_port_gemma_cpp = 8008
+n_threads = 4
+
+[server]
+[[server.routers]]
+name = "gemma"
+provider = "auto_local"
+model_path = "models/gemma-3-12b-it-q4_k_m.gguf"
+n_threads = 4

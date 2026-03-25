@@ -15,68 +15,34 @@
 import pytest
 import time
 import random
-import threading
-import uvicorn
 import httpx
 import asyncio
-from edgerouter.main import app
-from .data import RETAIL_TEST_CASES, get_test_env_setting
-from common.otel import get_tracer, flush_otel
+from tests.integration.data import RETAIL_TEST_CASES
+from common.otel import get_tracer
 
-# Configuration for the load test driven by test_config.toml
-SERVER_HOST = "127.0.0.1"
-SERVER_PORT = int(get_test_env_setting("server_port_gemini", "8006"))
-BASE_URL = f"http://{SERVER_HOST}:{SERVER_PORT}"
-TOTAL_REQUESTS = int(get_test_env_setting("total_requests", "100"))
-CONCURRENT_CLIENTS = int(get_test_env_setting("concurrent_clients", "10"))
-
-def run_server():
-    """Starts the FastAPI server in a separate thread."""
-    uvicorn.run(app, host=SERVER_HOST, port=SERVER_PORT, log_level="error")
-
-@pytest.fixture(scope="module", autouse=True)
-def engine_service():
-    """Fixture to start and stop the server for the duration of the test module."""
-    server_thread = threading.Thread(target=run_server, daemon=True)
-    server_thread.start()
-    
-    # Wait for server to be ready
-    timeout = 15
-    start_time = time.time()
-    while time.time() - start_time < timeout:
-        try:
-            with httpx.Client() as client:
-                response = client.get(f"{BASE_URL}/health")
-                if response.status_code == 200:
-                    break
-        except Exception:
-            pass
-        time.sleep(0.5)
-    else:
-        pytest.fail("Server failed to start in time for Gemini load test.")
-    
-    yield
-    flush_otel()
-
-async def send_request(client, semaphore, results, tracer):
+async def send_request(client, semaphore, results, tracer, base_url):
     """Sends a single routing request to the Gemini model."""
     async with semaphore:
         with tracer.start_as_current_span("load_test.gemini.send_request") as span:
-            prompt, expected = random.choice(RETAIL_TEST_CASES)
+            test_case = random.choice(RETAIL_TEST_CASES)
+            prompt = test_case[0]
+            expected = test_case[1]
+            context_summary = test_case[2] if len(test_case) > 2 else None
+
             payload = {
                 "model": "gemini",
                 "prompt": prompt
             }
             
-            # Sampling: 25% chance of providing context_summary
-            has_context = random.random() < 0.25
-            if has_context:
-                payload["context_summary"] = f"The user is currently asking about {expected}."
+            has_context = False
+            if context_summary:
+                payload["context_summary"] = context_summary
+                has_context = True
             
             span.set_attribute("test.prompt", prompt)
             span.set_attribute("test.context_used", has_context)
             try:
-                response = await client.post(f"{BASE_URL}/route", json=payload, timeout=30.0)
+                response = await client.post(f"{base_url}/route", json=payload, timeout=30.0)
                 success = response.status_code == 200
                 results.append(success)
                 span.set_attribute("http.status_code", response.status_code)
@@ -85,18 +51,18 @@ async def send_request(client, semaphore, results, tracer):
                 span.record_exception(e)
                 span.set_status(status=2, description=str(e)) # 2 = ERROR
 
-async def run_load_test(tracer):
-    semaphore = asyncio.Semaphore(CONCURRENT_CLIENTS)
+async def run_load_test(tracer, load_test_config):
+    semaphore = asyncio.Semaphore(load_test_config["concurrent_clients"])
     results = []
     
     with tracer.start_as_current_span("load_test.gemini.execution_loop"):
         async with httpx.AsyncClient() as client:
-            tasks = [send_request(client, semaphore, results, tracer) for _ in range(TOTAL_REQUESTS)]
+            tasks = [send_request(client, semaphore, results, tracer, load_test_config["base_url"]) for _ in range(load_test_config["total_requests"])]
             await asyncio.gather(*tasks)
     
     return results
 
-def test_gemini_load():
+def test_gemini_load(load_test_config):
     """
     Executes a load test of 1000 requests against the Gemini Flash Lite router.
     Instrumented with OTel spans for trace analysis.
@@ -104,27 +70,28 @@ def test_gemini_load():
     tracer = get_tracer("gemini_load_test")
     
     with tracer.start_as_current_span("gemini_load_test.total_execution") as parent_span:
-        print(f"\nStarting GEMINI FLASH LITE load test: {TOTAL_REQUESTS} requests...")
+        total_reqs = load_test_config["total_requests"]
+        print(f"\nStarting GEMINI 3.1 FLASH LITE load test: {total_reqs} requests...")
         
         start_time = time.time()
-        results = asyncio.run(run_load_test(tracer))
+        results = asyncio.run(run_load_test(tracer, load_test_config))
         end_time = time.time()
         
         duration = end_time - start_time
         success_count = sum(results)
-        failure_count = TOTAL_REQUESTS - success_count
+        failure_count = total_reqs - success_count
         
-        parent_span.set_attribute("test.total_requests", TOTAL_REQUESTS)
+        parent_span.set_attribute("test.total_requests", total_reqs)
         parent_span.set_attribute("test.success_count", success_count)
         parent_span.set_attribute("test.duration_seconds", duration)
-        parent_span.set_attribute("test.rps", TOTAL_REQUESTS / duration)
+        parent_span.set_attribute("test.rps", total_reqs / duration if duration > 0 else 0)
         
         print(f"\nGemini Load Test Results:")
-        print(f"Total Requests: {TOTAL_REQUESTS}")
+        print(f"Total Requests: {total_reqs}")
         print(f"Successful: {success_count}")
         print(f"Failed: {failure_count}")
         print(f"Duration: {duration:.2f} seconds")
-        print(f"Requests Per Second: {TOTAL_REQUESTS / duration:.2f}")
+        print(f"Requests Per Second: {total_reqs / duration:.2f}" if duration > 0 else "N/A")
 
         # Allow for 5% failure rate in cloud/high-load scenarios
-        assert success_count >= TOTAL_REQUESTS * 0.95
+        assert success_count >= total_reqs * 0.95

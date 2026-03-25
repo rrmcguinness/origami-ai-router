@@ -23,10 +23,15 @@ import logging
 import os
 
 from opentelemetry import context
-from stateless_router.interface import StatelessRouter
-from stateless_router.models import RoutingRules
-from common.config import Config
+from edgerouter_api.interfaces import StatelessRouter
+from edgerouter_api.models import RoutingRules
+from edgerouter_api.config import RouterConfig
+from edgerouter_api.config import Config
 from common.otel import get_tracer
+
+class LlamaCppRouterConfig(RouterConfig):
+    model_path: str
+    n_threads: int = 4
 
 from llama_cpp import Llama, LlamaGrammar
 from llama_cpp import llama_supports_gpu_offload
@@ -40,12 +45,13 @@ class LlamaCppRouter(StatelessRouter):
     """
     def __init__(self, 
                  rules: RoutingRules, 
+                 config: LlamaCppRouterConfig,
                  executor: Optional[ThreadPoolExecutor] = None,
-                 model_path: str | Path | None = None, 
-                 n_threads: int = 4):
-        super().__init__(rules, executor)
-        if not model_path:
-            model_path = get_current_file_path("gemma-3-270m-it-qat-Q4_0.gguf")
+                 **kwargs):
+        super().__init__(rules=rules, config=config, executor=executor, **kwargs)
+        
+        model_path = config.model_path
+        n_threads = config.n_threads
             
         logger.info(f"CUDA OFF-LOAD natively supported by llama_cpp: {llama_supports_gpu_offload()}")
 
@@ -55,8 +61,10 @@ class LlamaCppRouter(StatelessRouter):
             chat_format = "llama-3"
         elif "gemma" in model_name_lower:
             chat_format = "gemma"
+        elif "mistral" in model_name_lower:
+            chat_format = "chatml"
         else:
-            chat_format = "gemma" # Default to gemma
+            chat_format = "chatml" # Default all unhandled edges to standard ChatML format
             
         logger.info(f"Initialized LlamaCpp with chat_format: {chat_format} (detected from {model_path})")
 
@@ -74,8 +82,8 @@ class LlamaCppRouter(StatelessRouter):
 
     def _build_grammar(self) -> LlamaGrammar:
         agent_names = [a.name for a in self.rules.agents]
-        if "Fallback" not in agent_names:
-            agent_names.append("Fallback")
+        if "fallback" not in agent_names:
+            agent_names.append("fallback")
             
         schema = {
             "type": "object",
@@ -113,10 +121,23 @@ class LlamaCppRouter(StatelessRouter):
                 )
                 
                 # Constructing the message (llama-cpp-python formats these correctly per template)
-                messages = [
-                    {"role": "system", "content": instruction_prompt},
-                    {"role": "user", "content": f"Query: {user_query}\nRoute JSON:"}
-                ]
+                user_content = f"Query: {user_query}\n"
+                if context_summary:
+                    user_content = f"Context from previous turns: {context_summary}\n" + user_content
+                user_content += "Route JSON:"
+
+                # Different chat templates behave radically different with explicit system roles.
+                # Gemma and Mistral models in particular are known to scramble or ignore {"role": "system"}
+                # under certain llama.cpp template alignments.
+                if "gemma" in str(self.llm.model_path).lower() or "mistral" in str(self.llm.model_path).lower():
+                    messages = [
+                        {"role": "user", "content": f"System Instructions:\n{instruction_prompt}\n\nUser Request:\n{user_content}"}
+                    ]
+                else:
+                    messages = [
+                        {"role": "system", "content": instruction_prompt},
+                        {"role": "user", "content": user_content}
+                    ]
                 
                 response: Dict[str, Any] = self.llm.create_chat_completion(
                     messages=messages,
@@ -134,10 +155,10 @@ class LlamaCppRouter(StatelessRouter):
                     # if the grammar isn't strictly enforced on the first token. 
                     # We'll parse the JSON safely.
                     data = json.loads(content)
-                    return str(data.get("route", "Fallback"))
+                    return str(data.get("route", "fallback"))
                 except (KeyError, IndexError, json.JSONDecodeError) as e:
                     span.record_exception(e)
-                    return "Fallback"
+                    return "fallback"
         
         return await loop.run_in_executor(self.executor, _sync_route)
 
@@ -149,12 +170,14 @@ class LlamaCppWorkerPool(StatelessRouter):
     """
     def __init__(self, 
                  rules: RoutingRules, 
+                 config: LlamaCppRouterConfig,
                  executor: Optional[ThreadPoolExecutor] = None,
-                 model_path: str | Path | None = None, 
-                 num_workers: int = 4):
-        super().__init__(rules, executor)
-        self.model_path = model_path
-        self.num_workers = num_workers
+                 **kwargs):
+        super().__init__(rules=rules, config=config, executor=executor, **kwargs)
+        
+        self.model_path = config.model_path
+        self.num_workers = config.n_threads
+        
         self.workers: asyncio.Queue[LlamaCppRouter] = asyncio.Queue()
         self.tracer = get_tracer("llama_cpp_worker_pool")
         self.initialized = False
@@ -165,7 +188,7 @@ class LlamaCppWorkerPool(StatelessRouter):
         logger.info(f"Initializing {self.num_workers} LlamaCpp workers...")
         for _ in range(self.num_workers):
             # Each worker gets the shared executor
-            worker = LlamaCppRouter(self.rules, self.executor, self.model_path)
+            worker = LlamaCppRouter(self.rules, self.config, self.executor)
             await self.workers.put(worker)
         self.initialized = True
         logger.info("LlamaCpp worker pool initialization complete.")

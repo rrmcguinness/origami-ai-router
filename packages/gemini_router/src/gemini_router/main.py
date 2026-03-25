@@ -17,9 +17,9 @@ import asyncio
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor
 from google import genai
-from stateless_router.interface import StatelessRouter
-from stateless_router.models import RoutingRules
-from common.config import Config
+from edgerouter_api.interfaces import StatelessRouter
+from edgerouter_api.models import RoutingRules
+from edgerouter_api.config import Config
 from common.otel import get_tracer
 import os
 
@@ -31,42 +31,45 @@ class GeminiRouter(StatelessRouter):
     """
     def __init__(self, 
                  rules: RoutingRules, 
+                 config: Config,
                  executor: Optional[ThreadPoolExecutor] = None,
-                 project_id: str | None = None, 
-                 location: str | None = None,
-                 google_base_url: str | None = None):
-        super().__init__(rules, executor)
+                 **kwargs):
+        super().__init__(rules=rules, config=config, executor=executor, **kwargs)
         
-        # Load from config if not provided
-        config = Config()
-        app_config = getattr(config.baseConfig, "application", None)
+        router_model = config.ai_models.get_model("router")
+        self.model_name = router_model.model_name if router_model else "gemini-3.1-flash-lite-preview"
         
-        project_id = project_id or getattr(app_config, "google_project_id", "rmcguinness")
-        location = location or getattr(app_config, "google_location", "us-central1")
-        api_key = getattr(app_config, "google_api_key", None)
-        google_base_url = google_base_url or getattr(app_config, "google_base_url", None)
-
-        http_options = None
-        if google_base_url:
-            from google.genai import types
-            http_options = types.HttpOptions(base_url=google_base_url)
-
+        project_id = config.application.google_project_id or config.application.projectId
+        api_key = router_model.api_key if router_model else os.environ.get("GOOGLE_API_KEY")
+        
+        if not project_id and not api_key:
+             raise ValueError("project_id or api_key must be configured for GeminiRouter.")
+        
         if api_key:
             self.client = genai.Client(
                 api_key=api_key,
-                vertexai=False,
-                http_options=http_options
+                vertexai=False
             )
         else:
             self.client = genai.Client(
                 project=project_id,
-                location=location,
-                vertexai=True,
-                http_options=http_options
+                location=config.application.location,
+                vertexai=True
             )
+        
         self.system_prompt = rules.to_system_prompt()
         self.tracer = get_tracer("gemini_router")
         self.environment = os.environ.get("RUNTIME_ENV", "local")
+        
+        self.generation_config = {
+            "system_instruction": self.system_prompt,
+            "response_mime_type": "application/json",
+            "temperature": router_model.temperature if router_model else 1.0,
+        }
+        
+        thinking_config = getattr(config, "thinking_config", None)
+        if thinking_config:
+            self.generation_config["thinking_config"] = thinking_config
 
     async def route(self, user_query: str, context_summary: Optional[str] = None) -> str:
         """
@@ -81,13 +84,9 @@ class GeminiRouter(StatelessRouter):
                 prompt = f"Reference Context: {context_summary}\n{prompt}"
                 
             return self.client.models.generate_content(
-                model="gemini-3.1-flash-lite-preview",
+                model=self.model_name,
                 contents=prompt,
-                config={
-                    "system_instruction": self.system_prompt,
-                    "response_mime_type": "application/json",
-                    "temperature": 0.0
-                }
+                config=self.generation_config
             )
 
         with self.tracer.start_as_current_span("gemini_router.route") as span:
@@ -104,9 +103,9 @@ class GeminiRouter(StatelessRouter):
             
             try:
                 data = json.loads(response.text)
-                outcome = str(data.get("route", "Fallback"))
+                outcome = str(data.get("route", "fallback"))
                 span.set_attribute("router.outcome", outcome)
                 return outcome
             except (json.JSONDecodeError, KeyError, TypeError):
-                span.set_attribute("router.outcome", "Fallback")
-                return "Fallback"
+                span.set_attribute("router.outcome", "fallback")
+                return "fallback"

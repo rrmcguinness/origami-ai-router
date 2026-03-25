@@ -14,19 +14,20 @@
 
 import pytest
 from unittest.mock import MagicMock, patch
-from stateless_router.models import RoutingRules
+from edgerouter_api.models import RoutingRules
 from gemini_router.main import GeminiRouter
-from llama_cpp_router.main import LlamaCppRouter
+from edgerouter_api.config import Config
+from llama_cpp_router.main import LlamaCppRouter, LlamaCppRouterConfig
 
 @pytest.fixture
 def mock_rules():
     return RoutingRules(agents=[{"name": "TestAgent", "description": "Test"}])
 
 @pytest.mark.anyio
-async def test_gemini_router_with_context(mock_rules):
+async def test_gemini_router_with_context(mock_rules, session_config):
     """Verifies that GeminiRouter correctly handles the context_summary argument."""
     with patch("google.genai.Client") as mock_client:
-        router = GeminiRouter(rules=mock_rules)
+        router = GeminiRouter(rules=mock_rules, config=session_config)
         # Mock the generate_content call
         mock_response = MagicMock()
         mock_response.text = '{"route": "TestAgent"}'
@@ -48,7 +49,7 @@ async def test_gemini_router_with_context(mock_rules):
 async def test_llama_cpp_router_with_context(mock_rules):
     """Verifies that LlamaCppRouter correctly handles the context_summary argument."""
     with patch("llama_cpp_router.main.Llama") as mock_llama:
-        router = LlamaCppRouter(rules=mock_rules, model_path="mock.gguf")
+        router = LlamaCppRouter(rules=mock_rules, config=LlamaCppRouterConfig(model_path="mock.gguf"))
         
         # Mock create_chat_completion
         mock_llama.return_value.create_chat_completion.return_value = {
@@ -59,11 +60,11 @@ async def test_llama_cpp_router_with_context(mock_rules):
         await router.route("Hello")
         args, kwargs = mock_llama.return_value.create_chat_completion.call_args
         messages = kwargs["messages"]
-        assert messages[1]["content"] == "User: Hello\nRoute:"
+        assert messages[1]["content"] == "Query: Hello\nRoute JSON:"
         
         # 2. Test with context
         await router.route("Hello", context_summary="Previous context")
         args, kwargs = mock_llama.return_value.create_chat_completion.call_args
         messages = kwargs["messages"]
-        assert "Reference Context: Previous context" in messages[1]["content"]
-        assert "User: Hello\nRoute:" in messages[1]["content"]
+        assert "Context from previous turns: Previous context" in messages[1]["content"]
+        assert "Query: Hello\nRoute JSON:" in messages[1]["content"]

@@ -13,51 +13,78 @@
 # limitations under the License.
 
 import os
-from common.config import Config
-from stateless_router.models import RoutingRules, AgentDefinition
+import tomllib
+from edgerouter_api.config import Config
+from edgerouter_api.models import RoutingRules, AgentDefinition
 
 # Load test configuration paths
 _base_dir = os.path.dirname(__file__)
 _test_cases_path = os.path.join(_base_dir, "test_cases.toml")
 
-# Dynamically construct Test Cases from the shared configuration
-_cases_config = Config(file=_test_cases_path)
-RETAIL_TEST_CASES = [tuple(case) for case in _cases_config.baseConfig.tests.cases]
+with open(_test_cases_path, "rb") as f:
+    _tests_data = tomllib.load(f)
+
+RETAIL_TEST_CASES = []
+for case in _tests_data.get("tests", {}).get("cases", []):
+    if len(case) == 3:
+        RETAIL_TEST_CASES.append((case[0], case[1], case[2]))
+    else:
+        RETAIL_TEST_CASES.append((case[0], case[1], None))
+
 RETAIL_TEST_CASES_SUBSET = RETAIL_TEST_CASES[:100]
+
+def load_hierarchical_data(provider_type: str = None) -> dict:
+    base_path = os.path.join(_base_dir, "test_config.toml")
+    with open(base_path, "rb") as f:
+        data = tomllib.load(f)
+        
+    config_file = None
+    if provider_type:
+        if "gemini" in provider_type.lower():
+            config_file = "gemini/test_config_gemini.toml"
+        elif "gemma" in provider_type.lower() or "llama" in provider_type.lower():
+            config_file = "llama/test_config_llama_cpp.toml"
+        elif "vllm" in provider_type.lower():
+            config_file = "vllm/test_config_vllm.toml"
+            
+    if config_file:
+        override_path = os.path.join(_base_dir, config_file)
+        if os.path.exists(override_path):
+            with open(override_path, "rb") as f:
+                override_data = tomllib.load(f)
+            
+            def deep_merge(d1, d2):
+                for k, v in d2.items():
+                    if isinstance(v, dict) and k in d1 and isinstance(d1[k], dict):
+                        deep_merge(d1[k], v)
+                    else:
+                        d1[k] = v
+                return d1
+                
+            data = deep_merge(data, override_data)
+            
+    return data
 
 def get_rules_for_provider(provider_type: str) -> RoutingRules:
     """
     Dynamically loads the specialized routing rules for a given provider.
     """
-    if "gemini" in provider_type.lower():
-        config_file = "test_config_gemini.toml"
-    elif "gemma" in provider_type.lower() or "llama" in provider_type.lower():
-        config_file = "test_config_llama_cpp.toml"
-    elif "vllm" in provider_type.lower():
-        config_file = "test_config_vllm.toml"
-    else:
-        config_file = "test_config.toml"
-        
-    path = os.path.join(_base_dir, config_file)
-    if not os.path.exists(path):
-        path = os.path.join(_base_dir, "test_config.toml")
-        
-    config = Config(file=path)
+    data = load_hierarchical_data(provider_type)
     
-    # Extract global rules from the routing section if present
-    global_rules = getattr(config.baseConfig.routing, "global_rules", [])
+    routing = data.get("routing", {})
+    global_rules = routing.get("global_rules", [])
     if isinstance(global_rules, str):
         global_rules = [global_rules]
 
     return RoutingRules(
         agents=[
             AgentDefinition(
-                name=agent["name"] if isinstance(agent, dict) else agent.name,
-                description=agent["description"] if isinstance(agent, dict) else agent.description,
-                instructions=agent.get("instructions") if isinstance(agent, dict) else getattr(agent, "instructions", None),
-                salience=agent.get("salience", 0) if isinstance(agent, dict) else getattr(agent, "salience", 0)
+                name=agent.get("name"),
+                description=agent.get("description"),
+                instructions=agent.get("instructions"),
+                salience=agent.get("salience", 0)
             )
-            for agent in config.baseConfig.routing.agents
+            for agent in routing.get("agents", [])
         ],
         global_rules=global_rules
     )
@@ -66,20 +93,9 @@ def get_rules_for_provider(provider_type: str) -> RoutingRules:
 RETAIL_ROUTING_RULES = get_rules_for_provider("gemini")
 
 def get_test_env_setting(key: str, default: str = None, provider_type: str = None) -> str:
-    # Use the provider-specific config if available, otherwise fallback to base
-    config_file = "test_config.toml"
-    if provider_type:
-        if "gemini" in provider_type.lower():
-            config_file = "test_config_gemini.toml"
-        elif "gemma" in provider_type.lower() or "llama" in provider_type.lower():
-            config_file = "test_config_llama_cpp.toml"
-            
-    path = os.path.join(_base_dir, config_file)
-    if not os.path.exists(path):
-        path = os.path.join(_base_dir, "test_config.toml")
+    data = load_hierarchical_data(provider_type)
         
-    config = Config(file=path)
-    val = getattr(config.baseConfig.environment, key, None)
+    val = data.get("environment", {}).get(key, None)
     if val is not None:
         return val
-    return getattr(config.baseConfig.load_test, key, default)
+    return data.get("load_test", {}).get(key, default)

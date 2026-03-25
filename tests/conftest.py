@@ -16,25 +16,36 @@ import pytest
 from common.otel import flush_otel, init_otel, get_tracer
 from concurrent.futures import ThreadPoolExecutor
 
+@pytest.fixture(scope="session")
+def session_config():
+    """Provides a singleton Config instance for the test session."""
+    import os
+    # Ensure integration or default test environment is prioritized over local
+    if "RUNTIME_ENV" not in os.environ:
+        os.environ["RUNTIME_ENV"] = "integration"
+        
+    from edgerouter_api.config import Config
+    import edgerouter.main as edgemain
+    if edgemain.config is None:
+        edgemain.config = Config()
+    return edgemain.config
+
 @pytest.fixture(scope="session", autouse=True)
-def setup_otel():
+def setup_otel(session_config):
     """
     Initialize OTel at the start of the test session and flush it at the end.
     """
-    init_otel()
+    init_otel(session_config)
     yield
     flush_otel()
 
 @pytest.fixture(scope="session")
-def shared_executor():
+def shared_executor(session_config):
     """
     Provides a shared ThreadPoolExecutor for testing, ensuring it's shut down 
     at the end of the test session. The pool size is driven by configuration.
     """
-    from common.config import Config
-    config = Config()
-    app_config = getattr(config.baseConfig, "application", None)
-    max_workers = getattr(app_config, "threadPoolSize", 100)
+    max_workers = session_config.application.threadPoolSize or 100
     
     executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="test-executor")
     yield executor

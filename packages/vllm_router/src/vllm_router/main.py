@@ -21,10 +21,14 @@ import uuid
 import os
 
 from opentelemetry import context
-from stateless_router.interface import StatelessRouter
-from stateless_router.models import RoutingRules
-from common.config import Config
+from edgerouter_api.interfaces import StatelessRouter
+from edgerouter_api.models import RoutingRules
+from edgerouter_api.config import RouterConfig
+from edgerouter_api.config import Config
 from common.otel import get_tracer
+
+class VllmRouterConfig(RouterConfig):
+    model_path: str
 
 import vllm
 from vllm.engine.arg_utils import AsyncEngineArgs
@@ -43,10 +47,12 @@ class VllmRouter(StatelessRouter):
     """
     def __init__(self, 
                  rules: RoutingRules, 
+                 config: VllmRouterConfig,
                  executor: Optional[ThreadPoolExecutor] = None,
-                 model_path: str | Path | None = None, 
-                 n_threads: int = 4):
-        super().__init__(rules, executor)
+                 **kwargs):
+        super().__init__(rules=rules, config=config, executor=executor, **kwargs)
+        
+        model_path = config.model_path
         
         # Initialize vLLM Async Engine natively optimized for continuous request batching
         engine_args = AsyncEngineArgs(
@@ -58,8 +64,8 @@ class VllmRouter(StatelessRouter):
         self.engine = AsyncLLMEngine.from_engine_args(engine_args)
         
         agent_names = [a.name for a in rules.agents]
-        if "Fallback" not in agent_names:
-            agent_names.append("Fallback")
+        if "fallback" not in agent_names:
+            agent_names.append("fallback")
             
         # vLLM utilizes outlines under the hood for guided JSON/Regex structural forcing
         choices_str = "|".join(agent_names)
@@ -119,16 +125,16 @@ class VllmRouter(StatelessRouter):
                 
                 try:
                     data = json.loads(text)
-                    return str(data.get("route", "Fallback"))
+                    return str(data.get("route", "fallback"))
                 except (json.JSONDecodeError, KeyError, TypeError):
                     import re
                     match = re.search(r'"route"\s*:\s*"([^"]+)"', text)
                     if match:
                         return match.group(1)
-                    return "Fallback"
+                    return "fallback"
             except Exception as e:
                 span.record_exception(e)
-                return "Fallback"
+                return "fallback"
 
 def get_current_file_path(filename: str) -> Path:
     current_dir: Final[Path] = Path(__file__).parent.resolve()

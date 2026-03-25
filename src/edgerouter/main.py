@@ -22,11 +22,11 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from .routes import auth
-from common.config import Config
+from edgerouter_api.config import Config
 from common.otel import init_otel, get_tracer
 from opentelemetry.propagate import extract
-from stateless_router.interface import StatelessRouter
-from stateless_router.models import RoutingRules, AgentDefinition
+from edgerouter_api.interfaces import StatelessRouter
+from edgerouter_api.models import RoutingRules, AgentDefinition
 from stateless_router.builder import RouterBuilder
 # Imports moved inside setup_routers to allow conditional provider loading
 
@@ -73,7 +73,7 @@ def get_executor() -> ThreadPoolExecutor:
     if executor is None:
         if config is None:
             config = Config()
-        app_config = getattr(config.baseConfig, "application", None)
+        app_config = getattr(config, "application", None)
         pool_size = getattr(app_config, "threadPoolSize", 20)
         executor = ThreadPoolExecutor(max_workers=pool_size, thread_name_prefix="edge-router-pool")
     return executor
@@ -90,6 +90,8 @@ async def setup_routers(server_cfg, rules: RoutingRules, shared_executor: Thread
         return
 
     router_configs = server_cfg.routers
+    if isinstance(router_configs, dict):
+        router_configs = list(router_configs.values())
 
     for r_cfg in router_configs:
         name = getattr(r_cfg, "name", None) if hasattr(r_cfg, "name") else r_cfg.get("name")
@@ -105,35 +107,60 @@ async def setup_routers(server_cfg, rules: RoutingRules, shared_executor: Thread
                   .with_executor(shared_executor)
                   .with_rules(rules))
         
+        config_path = getattr(r_cfg, "config_path", None) if hasattr(r_cfg, "config_path") else r_cfg.get("config_path")
+        model_config = {}
+        
+        # Resolve config manually if path provided
+        if config_path:
+            parts = config_path.split('.')
+            curr = config
+            for p in parts:
+                # Add backwards compatibility mapping
+                if p == "gemini":
+                    curr = getattr(config, "ai_models", None)
+                elif p == "flash":
+                    curr = getattr(curr, "get_model", lambda x: None)("router")
+                else:
+                    curr = getattr(curr, p, None)
+            if curr:
+                model_config = curr.to_dict() if hasattr(curr, "to_dict") else vars(curr)
+        else:
+            model_config = r_cfg.to_dict() if hasattr(r_cfg, "to_dict") else vars(r_cfg)
+        
         if provider == "gemini":
-            active_routers[name] = builder.with_provider(GeminiRouter).build()
+            from gemini_router.main import GeminiRouter
+            builder.with_provider(GeminiRouter, config=config)
+            active_routers[name] = builder.build()
                                     
         elif provider == "auto_local":
             vllm_available = False
             try:
-                from vllm_router.main import VllmRouter
+                from vllm_router.main import VllmRouter, VllmRouterConfig
                 vllm_available = True
             except (ImportError, ModuleNotFoundError):
                 print(f"  vLLM not available for '{name}', checking for LlamaCpp...")
 
             try:
-                from llama_cpp_router.main import LlamaCppRouter, LlamaCppWorkerPool
+                from llama_cpp_router.main import LlamaCppRouter, LlamaCppWorkerPool, LlamaCppRouterConfig
                 llama_available = True
             except (ImportError, ModuleNotFoundError):
                 print(f"  LlamaCpp not available for '{name}'.")
                 llama_available = False
 
-            model_path = getattr(r_cfg, "model_path", None) if hasattr(r_cfg, "model_path") else r_cfg.get("model_path")
-            n_threads = getattr(r_cfg, "n_threads", 4) if hasattr(r_cfg, "n_threads") else r_cfg.get("n_threads", 4)
+            model_path = model_config.get("model_path")
+            n_threads = model_config.get("n_threads", 4)
 
             try:
                 import torch
                 if torch.cuda.is_available() and vllm_available:
                     print(f"  CUDA and vLLM detected for '{name}', initializing VllmRouter.")
-                    active_routers[name] = builder.with_provider(VllmRouter, model_path=model_path).build()
+                    vllm_config = VllmRouterConfig(**model_config)
+                    builder.with_provider(VllmRouter, config=vllm_config)
+                    active_routers[name] = builder.build()
                 elif llama_available:
                     print(f"  Initializing LlamaCppWorkerPool for '{name}'.")
-                    pool = LlamaCppWorkerPool(rules, shared_executor, model_path=model_path, num_workers=n_threads)
+                    llama_config = LlamaCppRouterConfig(**model_config)
+                    pool = LlamaCppWorkerPool(rules, config=llama_config, executor=shared_executor)
                     await pool.initialize()
                     active_routers[name] = pool
                 else:
@@ -152,10 +179,12 @@ async def startup_event():
     parser.add_argument("--rules", type=str, default="rules.toml", help="Path to the routing rules TOML file")
     args, unknown = parser.parse_known_args()
     
-    config = Config()
+    if config is None:
+        config = Config()
+        
     shared_executor = get_executor()
     
-    server_cfg = getattr(config.baseConfig, "server", None)
+    server_cfg = getattr(config, "api_server", None)
     
     init_otel(config)
     tracer = get_tracer("edgerouter_service")
@@ -202,7 +231,7 @@ async def route_query(request: RouteRequest, req: Request):
         shared_executor = get_executor()
         rules_path = "rules.toml"
         rules = load_rules(rules_path)
-        server_cfg = getattr(config.baseConfig, "server", None)
+        server_cfg = getattr(config, "api_server", None)
         await setup_routers(server_cfg, rules, shared_executor)
 
     ctx = extract(req.headers)
@@ -235,7 +264,7 @@ async def route_query(request: RouteRequest, req: Request):
 if __name__ == "__main__":
     # Load config for uvicorn settings
     cfg = Config()
-    server_cfg = getattr(cfg.baseConfig, "server", None)
+    server_cfg = getattr(cfg, "api_server", None)
     host = getattr(server_cfg, "host", "0.0.0.0")
     port = getattr(server_cfg, "port", 8000)
     

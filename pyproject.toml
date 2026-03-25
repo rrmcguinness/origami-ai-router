@@ -12,6 +12,7 @@ dependencies = [
     "vllm-router",
     "llama-cpp-router",
     "gemini-router",
+    "edgerouter-api",
     "fastapi>=0.135.1",
     "uvicorn>=0.42.0",
     "google-auth>=2.49.1",
@@ -52,6 +53,7 @@ gemini-router = { workspace = true }
 vllm-router = { workspace = true }
 llama-cpp-router = { workspace = true }
 stateless-router = { workspace = true }
+edgerouter-api = { workspace = true }
 
 [[tool.uv.index]]
 name = "pypi"

@@ -18,9 +18,9 @@ import random
 import httpx
 import asyncio
 from edgerouter.main import app
-from .data import RETAIL_TEST_CASES, get_test_env_setting
+from tests.integration.data import RETAIL_TEST_CASES, get_test_env_setting
 from common.otel import get_tracer, flush_otel
-from common.config import Config
+from edgerouter_api.config import Config
 
 from opentelemetry.propagate import inject
 
@@ -37,16 +37,20 @@ async def send_request(client, semaphore, results, tracer, target_model: str):
     """Sends a single routing request with a random test case."""
     async with semaphore:
         with tracer.start_as_current_span("load_test.send_request") as span:
-            prompt, expected = random.choice(RETAIL_TEST_CASES)
+            test_case = random.choice(RETAIL_TEST_CASES)
+            prompt = test_case[0]
+            expected = test_case[1]
+            context_summary = test_case[2] if len(test_case) > 2 else None
+            
             payload = {
                 "model": target_model,
                 "prompt": prompt
             }
             
-            # Sampling: 25% chance of providing context_summary
-            has_context = random.random() < 0.25
-            if has_context:
-                payload["context_summary"] = f"The user is currently asking about {expected}."
+            has_context = False
+            if context_summary:
+                payload["context_summary"] = context_summary
+                has_context = True
                 
             span.set_attribute("test.prompt", prompt)
             span.set_attribute("test.context_used", has_context)
@@ -57,9 +61,17 @@ async def send_request(client, semaphore, results, tracer, target_model: str):
             try:
                 response = await client.post("http://test/route", json=payload, headers=headers, timeout=30.0)
                 success = response.status_code == 200
+                if success:
+                    route = response.json().get("route")
+                    if route != expected:
+                        print(f"Accuracy failure: Expected '{expected}', Got '{route}' for prompt: '{prompt}'")
+                        success = False
+                if not success:
+                    print(f"Failed request! Status: {response.status_code}, Body: {response.text}")
                 results.append(success)
                 span.set_attribute("http.status_code", response.status_code)
             except Exception as e:
+                print(f"Exception during request: {e}")
                 results.append(False)
                 span.record_exception(e)
                 span.set_status(status=2, description=str(e)) # 2 = ERROR
@@ -91,8 +103,7 @@ def test_llama_cpp_load():
     
     with tracer.start_as_current_span("local_router_load_test.total_execution") as parent_span:
         cfg = Config()
-        test_cfg = getattr(cfg.baseConfig, "test", None)
-        target_model = getattr(test_cfg, "model", "llama")
+        target_model = "llama"
         
         print(f"\nStarting INSTRUMENTED ASYNC load test for LlamaCpp model '{target_model}': {TOTAL_REQUESTS} requests...")
         

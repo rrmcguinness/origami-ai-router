@@ -16,13 +16,17 @@ import pytest
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor
 from stateless_router.builder import RouterBuilder
-from stateless_router.models import RoutingRules, AgentDefinition
-from stateless_router.interface import StatelessRouter
+from edgerouter_api.models import RoutingRules, AgentDefinition
+from edgerouter_api.interfaces import StatelessRouter
+from edgerouter_api.config import RouterConfig
+
+class MockConfig(RouterConfig):
+    pass
 
 class MockRouter(StatelessRouter):
     """Simple mock router for unit testing the builder."""
-    def __init__(self, rules: RoutingRules, executor: Optional[ThreadPoolExecutor] = None, **kwargs):
-        super().__init__(rules, executor)
+    def __init__(self, rules: RoutingRules, config: RouterConfig, executor: Optional[ThreadPoolExecutor] = None, **kwargs):
+        super().__init__(rules=rules, config=config, executor=executor, **kwargs)
         self.kwargs = kwargs
 
     async def route(self, user_query: str) -> str:
@@ -38,7 +42,7 @@ async def test_router_builder_success(shared_executor):
     
     builder = RouterBuilder()
     router = (builder
-              .with_provider(MockRouter, custom_arg="special_value")
+              .with_provider(MockRouter, config=MockConfig(), custom_arg="special_value")
               .with_rules(rules)
               .with_executor(shared_executor)
               .build())
@@ -52,9 +56,19 @@ async def test_router_builder_success(shared_executor):
 @pytest.mark.anyio
 async def test_router_builder_missing_rules():
     builder = RouterBuilder()
-    builder.with_provider(MockRouter)
+    builder.with_provider(MockRouter, config=MockConfig())
     
     with pytest.raises(ValueError, match="Provide a RoutingRules object"):
+        builder.build()
+
+@pytest.mark.anyio
+async def test_router_builder_missing_config():
+    rules = RoutingRules(agents=[AgentDefinition(name="A", description="B")])
+    builder = RouterBuilder()
+    builder.with_rules(rules)
+    builder._router_class = MockRouter
+    
+    with pytest.raises(ValueError, match="A valid RouterConfig object must be provided."):
         builder.build()
 
 @pytest.mark.anyio

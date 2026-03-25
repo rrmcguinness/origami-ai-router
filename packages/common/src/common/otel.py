@@ -49,8 +49,7 @@ from opentelemetry.exporter.cloud_logging import CloudLoggingExporter
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.semconv.resource import ResourceAttributes
 
-from .config import Config
-from .api import TomlClass
+from edgerouter_api.config import Config, TomlClass, TelemetryConfig
 
 logger = logging.getLogger(__name__)
 
@@ -59,10 +58,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, module="opentelem
 
 _INITIALIZED = False
 
-class TelemetryConfig(TomlClass):
-    service_name: str = "exitpass"
-    use_gcp: bool = True
-    project_id: Optional[str] = None
+
 
 def init_otel(config: Config = None):
     """
@@ -76,13 +72,14 @@ def init_otel(config: Config = None):
     if config is None:
         config = Config()
 
-    otel_cfg_dict = getattr(config.baseConfig, 'telemetry', {})
-    otel_cfg = TelemetryConfig(otel_cfg_dict)
+    otel_cfg = getattr(config, 'telemetry', None)
+    if not otel_cfg:
+        otel_cfg = TelemetryConfig({})
 
     if not otel_cfg.project_id:
-        app_cfg = getattr(config.baseConfig, 'application', None)
+        app_cfg = getattr(config, 'application', None)
         if app_cfg:
-            otel_cfg.project_id = getattr(app_cfg, 'google_project_id', getattr(app_cfg, 'projectId', None))
+            otel_cfg.project_id = getattr(app_cfg, 'google_project_id', getattr(app_cfg, 'projectId', None)) or "rmcguinness"
 
     logger.info(f"Initializing OpenTelemetry for service: {otel_cfg.service_name} (Project: {otel_cfg.project_id})")
 
