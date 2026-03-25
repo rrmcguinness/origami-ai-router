@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import pytest
-from common.otel import flush_otel, init_otel, get_tracer
+from origami_common.otel import flush_otel, init_otel, get_tracer
 from concurrent.futures import ThreadPoolExecutor
 
 @pytest.fixture(scope="session")
@@ -24,11 +24,11 @@ def session_config():
     if "RUNTIME_ENV" not in os.environ:
         os.environ["RUNTIME_ENV"] = "integration"
         
-    from edgerouter_api.config import Config
-    import edgerouter.main as edgemain
-    if edgemain.config is None:
-        edgemain.config = Config()
-    return edgemain.config
+    from origami_api.config import Config
+    import origami_router.state as edgestate
+    if edgestate.config is None:
+        edgestate.config = Config()
+    return edgestate.config
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_otel(session_config):
@@ -59,3 +59,13 @@ def test_span(request):
     tracer = get_tracer("tests")
     with tracer.start_as_current_span(request.node.name) as span:
         yield span
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_routers():
+    """Ensure routers are cleared and deleted before interpreter shutdown to prevent llama-cpp-python GC crashes."""
+    yield
+    import origami_router.state as edgestate
+    if hasattr(edgestate, "active_routers"):
+        edgestate.active_routers.clear()
+    import gc
+    gc.collect()

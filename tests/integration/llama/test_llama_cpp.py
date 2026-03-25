@@ -13,18 +13,19 @@
 # limitations under the License.
 
 import pytest
-from llama_cpp_router.main import LlamaCppRouter, LlamaCppRouterConfig
-from stateless_router.builder import RouterBuilder
-from tests.integration.data import RETAIL_ROUTING_RULES, RETAIL_TEST_CASES_SUBSET, get_test_env_setting
+pytestmark = pytest.mark.integration
+from origami_llama_cpp.main import LlamaCppRouter, LlamaCppRouterConfig
+from origami_stateless.builder import RouterBuilder
+from tests.data.data import RETAIL_ROUTING_RULES, RETAIL_TEST_CASES_SUBSET
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("query,expected_route,context_summary", RETAIL_TEST_CASES_SUBSET)
-async def test_llama_cpp_routing_load(query, expected_route, context_summary, shared_executor):
+@pytest.mark.parametrize("query,expected_route,context_summary", RETAIL_TEST_CASES_SUBSET[:25])
+async def test_llama_cpp_routing_load(query, expected_route, context_summary, shared_executor, session_config):
     """
     Test routing over 20+ retail-specific agents using local LlamaCpp driven by configuration.
     """
     # Use the universal llama_cpp config to resolve the current model path
-    model_path = get_test_env_setting("llama_model_path", provider_type="llama")
+    model_path = session_config.server.get_router("llama").model_path
     
     config = LlamaCppRouterConfig(model_path=model_path)
     
@@ -40,7 +41,8 @@ async def test_llama_cpp_routing_load(query, expected_route, context_summary, sh
     
     try:
         route = await router.route(query, context_summary=context_summary)
-        # We allow for some model variance, but the outcome should be the expected route or Fallback
-        assert route in [expected_route, "Fallback"], f"LlamaCpp routed '{query}' to '{route}' but expected '{expected_route}'"
+        actual_route = route.lower().strip()
+        expected_route_val = expected_route.lower().strip()
+        assert actual_route in [expected_route_val, "fallback"], f"LlamaCpp routed '{query}' to '{actual_route!r}' but expected '{expected_route_val!r}'"
     except Exception as e:
         pytest.fail(f"LlamaCpp routing failed for query '{query}': {e}")

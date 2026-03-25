@@ -13,27 +13,28 @@
 # limitations under the License.
 
 import pytest
+pytestmark = pytest.mark.integration
 import asyncio
-from gemini_router.main import GeminiRouter
-from stateless_router.builder import RouterBuilder
-from edgerouter_api.config import Config
-from tests.integration.data import RETAIL_TEST_CASES, get_rules_for_provider
+from origami_gemini.main import GeminiRouter
+from origami_stateless.builder import RouterBuilder
+from origami_api.config import Config
+from tests.data.data import RETAIL_TEST_CASES, RETAIL_ROUTING_RULES
 
-# Limit concurrency to avoid hitting Vertex AI rate limits or 503s during high demand
-sem = asyncio.Semaphore(5)
+# Limit concurrency to avoid hitting Vertex AI rate limits or 503s/500s on the preview model
+sem = asyncio.Semaphore(2)
 
 
 @pytest.mark.anyio
 @pytest.mark.parametrize("query, expected_route, context_summary", RETAIL_TEST_CASES[:25])
-async def test_gemini_routing_load(query, expected_route, context_summary, shared_executor, app_config):
+async def test_gemini_routing_load(query, expected_route, context_summary, shared_executor, session_config):
     """
     Tests the routing accuracy under a simulated load for Gemini.
     """
-    rules = get_rules_for_provider("gemini")
+
     
     router = (RouterBuilder()
-              .with_provider(GeminiRouter, config=app_config)
-              .with_rules(rules)
+              .with_provider(GeminiRouter, config=session_config)
+              .with_rules(RETAIL_ROUTING_RULES)
               .with_executor(shared_executor)
               .build())
     assert isinstance(router, GeminiRouter)

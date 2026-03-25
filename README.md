@@ -1,6 +1,6 @@
-# EdgeRouter
+# OrigamiRouter
 
-EdgeRouter is an enterprise-grade LLM routing and inference service designed for scalability, observability, and flexibility. It supports multiple backends including Google Gemini, vLLM, and llama.cpp, allowing for optimized model delivery across various environments.
+OrigamiRouter is an enterprise-grade LLM routing and inference service designed for scalability, observability, and flexibility. It supports multiple backends including Google Gemini, vLLM, and llama.cpp, allowing for optimized model delivery across various environments.
 
 ## Features
 
@@ -13,12 +13,12 @@ EdgeRouter is an enterprise-grade LLM routing and inference service designed for
 
 This project is managed as a `uv` workspace:
 
-- `src/edgerouter`: The main FastAPI application and entry point.
-- `packages/common`: Shared utilities, configuration (TOML), and telemetry.
-- `packages/stateless_router`: Base abstractions and Pydantic models for routers.
-- `packages/gemini_router`: Google Gemini model implementation.
-- `packages/vllm_router`: high-performance inference using vLLM (Linux/CUDA).
-- `packages/llama_cpp_router`: Local model execution via llama.cpp.
+- `src/origami-router`: The main FastAPI application and entry point.
+- `packages/origami_common`: Shared utilities, configuration (TOML), and telemetry.
+- `packages/origami_stateless`: Base abstractions and Pydantic models for routers.
+- `packages/origami_gemini`: Google Gemini model implementation.
+- `packages/origami_vllm`: high-performance inference using vLLM (Linux/CUDA).
+- `packages/origami_llama_cpp`: Local model execution via llama.cpp.
 
 ## Getting Started
 
@@ -36,25 +36,42 @@ uv sync --all-packages
 ### Running the Service
 
 ```bash
-uv run edgerouter
+uv run origami-router
 ```
 
 ## Documentation
 
 For detailed information on specific topics, refer to the following documents:
 
-- [Architecture Overview](docs/ARCH_OVERVIEW.md) - Deep dive into the system design.
-- [ADK Usage Guide](docs/ADK_USAGE.md) - How to use the Agent Development Kit.
-- [Accuracy Report](docs/ACCURACY_REPORT.md) - Performance and model accuracy metrics.
-- [CUDA Setup](docs/CUDA_SETUP.md) - Instructions for GPU acceleration.
+- [Architecture Overview](docs/architecture-overview.md) - Deep dive into the system design.
+- [ADK Usage Guide](docs/google-adk-best-practices.md) - How to use the Agent Development Kit.
+- [Performance & Accuracy Report](docs/router_performance_report.md) - Performance and model accuracy metrics.
+- [CUDA Setup](docs/nvidia-cuda-setup.md) - Instructions for GPU acceleration.
 
 ## Development
 
 ### Running Tests
 
+The test suite is segmented into specific categories using `pytest` markers for precise execution:
+
 ```bash
+# Run everything
 uv run pytest
+
+# Run only unit tests
+uv run pytest -m "unit"
+
+# Run only integration tests
+uv run pytest -m "integration"
+
+# Run load tests
+uv run pytest -m "load"
+
+# Run regression tests
+uv run pytest -m "regression"
 ```
+
+You can combine markers if needed (e.g., `uv run pytest -m "unit or integration"`).
 
 ---
 *Created with love (and a bit of sarcasm) by Ariana.*

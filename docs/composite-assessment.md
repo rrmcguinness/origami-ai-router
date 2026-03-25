@@ -1,4 +1,4 @@
-# EdgeRouter: Composite Model Assessment
+# OrigamiRouter: Composite Model Assessment
 
 ## Executive Summary
 This document synthesizes the rigorous load testing evaluations (100 asynchronous requests per model) across four distinct AI routing engines. The objective is to identify the strengths, limitations, and specific failure modes of each model when exposed to a complex, 11-agent stateless routing matrix. 

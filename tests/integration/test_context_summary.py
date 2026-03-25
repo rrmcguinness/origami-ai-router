@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import pytest
+pytestmark = pytest.mark.integration
 import httpx
 import asyncio
 import time
 import subprocess
 import os
-from common.otel import flush_otel
+from origami_common.otel import flush_otel
 
 BASE_URL = "http://127.0.0.1:8000"
 
@@ -26,10 +27,11 @@ BASE_URL = "http://127.0.0.1:8000"
 def setup_server():
     """Starts the EdgeRouter server for testing."""
     env = os.environ.copy()
-    env["PYTHONPATH"] = "src:packages/common/src:packages/stateless_router/src:packages/gemini_router/src:packages/vllm_router/src:packages/llama_cpp_router/src"
+    env["PYTHONPATH"] = "src:packages/common/src:packages/origami_stateless/src:packages/origami_gemini/src:packages/origami_vllm/src:packages/origami_llama_cpp/src"
     
+    import sys
     server_process = subprocess.Popen(
-        [".venv/bin/python", "-m", "src.edgerouter.main", "--rules", "rules.toml"],
+        [sys.executable, "-m", "origami_router.main", "--rules", "rules.toml"],
         env=env,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL

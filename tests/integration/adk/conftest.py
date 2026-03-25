@@ -1,3 +1,17 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import toml
 import pytest
@@ -5,27 +19,26 @@ from typing import Dict
 from fastapi.testclient import TestClient
 
 # Local imports
-from edgerouter.main import app
-from edgerouter_api.config import Config
-from common.otel import init_otel, flush_otel
+from origami_router.main import app
+from origami_api.config import Config
+from origami_common.otel import init_otel, flush_otel
 
 # ADK imports
 from google.adk.agents.llm_agent import Agent
 
-# Specialist Instructions (Cleaned of Walmart-specific references)
-AGENT_INSTRUCTIONS: Dict[str, str] = {
-    "us_customer_care": "You handle customer care requests related to order status, order status updates, cancellations, returns, and refunds. You answer questions about policies, services, and store locations. You are the mandatory routing destination for any request to talk to a live person, human, or agent.",
-    "customer_faq_agent": "Answers general questions based exclusively on the help center and self-service web pages. Covers memberships, privacy policies, gift cards, warranties, and price matching.",
-    "general_knowledge": "Provides general information, advice, or trivia using world knowledge. Useful when there is a search that should not be disrupted. Does not handle order-specific queries.",
-    "fallback": "Handles out-of-scope requests, inappropriate topics, cart operations (add/remove/checkout), and chatbot persona inquiries.",
-    "decision_assistant": "Answers detailed questions specifically about the product on the current item page (specs, warranty, reviews).",
-    "carousel_qna": "Provides information and comparisons about products actively displayed in the current carousel.",
-    "shopping_tool": "The primary engine for finding products, refining searches, and displaying new carousels.",
-    "events_shopping_planner": "Assists in planning events, gatherings, or specific personal routines, curating relevant products.",
-    "essentials": "Your exclusive task is to present the 'essentials' carousel when the user explicitly asks for their usuals, regular shopping, go-to items, or weekly prep. Do not handle requests to modify specific items inside the essentials list, cart modifications, or general browsing.",
-    "auto_care_center": "You exclusively handle generic tire shopping intent, numeric tire sizes (e.g., 235/45R18), tire-vehicle fitment, and tire seasonality (winter, all-season). Do not handle queries regarding auto/tire services (installation, oil changes), DIY advice, warranties, or tire attributes beyond seasonality (e.g., touring, performance, terrain).",
-    "recipe_agent": "You handle explicit requests to make, cook, bake, or prepare food. You refine active recipe searches based on budget, ingredients, substitutions, dietary restrictions, and serving sizes. Do not handle requests for ready-to-eat/deli foods, generic kitchen equipment, or instances where the user states they do not want to cook."
-}
+@pytest.fixture(scope="module")
+def rules_data():
+    """Loads and returns the rules.toml configuration."""
+    rules_path = os.path.join(os.path.dirname(__file__), "../../../rules.toml")
+    if not os.path.exists(rules_path):
+        rules_path = "rules.toml"
+        
+    try:
+        with open(rules_path, "r") as f:
+            return toml.load(f)
+    except Exception as e:
+        print(f"Warning: Failed to load rules.toml: {e}")
+        return {}
 
 def get_routing_decision(prompt: str) -> str:
     """Consults the EdgeRouter API to determine the appropriate specialist for a given prompt."""
@@ -36,15 +49,15 @@ def get_routing_decision(prompt: str) -> str:
     return response.json().get("route", "fallback")
 
 @pytest.fixture(scope="module")
-def adk_config():
+def adk_config(rules_data):
     """Initializes the configuration and OTel."""
     os.environ["RUNTIME_ENV"] = "integration"
     
     # Pre-seed the FastAPI app's global config so it doesn't initialize a second time
-    import edgerouter.main as edgemain
-    if edgemain.config is None:
-        edgemain.config = Config()
-    config = edgemain.config
+    import origami_router.state as edgestate
+    if edgestate.config is None:
+        edgestate.config = Config()
+    config = edgestate.config
     
     init_otel(config)
     
@@ -57,11 +70,16 @@ def adk_config():
     if router_model and router_model.api_key and router_model.api_key != "[ENCRYPTION_KEY]":
         os.environ["GOOGLE_API_KEY"] = router_model.api_key
     else:
-        from tests.integration.data import get_test_env_setting
-        api_key_env = get_test_env_setting("api_key")
-        os.environ["GOOGLE_API_KEY"] = api_key_env or "dummy_key_to_avoid_startup_crash"
+        api_key_env = os.environ.get("GEMINI_API_KEY", getattr(config.application, "api_key", ""))
+        os.environ["GOOGLE_API_KEY"] = api_key_env
+
+    if not os.environ["GOOGLE_API_KEY"]:
+        raise ValueError("GOOGLE_API_KEY not found in environment")
         
-    model_name = router_model.model_name or "gemini-3.1-flash-lite-preview" if router_model else "gemini-3.1-flash-lite-preview"
+    model_name = router_model.model_name
+
+    if not model_name:
+        raise ValueError("Model name not found in configuration")
     
     print("\n[WARMUP] Warming up EdgeRouter and ADK to avoid cold-start latency skew in metrics...")
     # Warmup EdgeRouter (FastAPI)
@@ -89,31 +107,29 @@ def adk_config():
     anyio.run(_warmup_adk)
     print("[WARMUP] Complete.")
     
+    instructions = {}
+    for agent_def in rules_data.get("agents", []):
+        if "name" in agent_def and "instructions" in agent_def:
+            instructions[agent_def["name"]] = agent_def["instructions"].strip()
+
     yield {
         "model_name": model_name,
-        "agent_instructions": AGENT_INSTRUCTIONS,
+        "agent_instructions": instructions,
         "get_routing_decision": get_routing_decision
     }
     flush_otel()
 
 @pytest.fixture(scope="module")
-def root_agent(adk_config):
+def root_agent(adk_config, rules_data):
     """Initializes the ADK system and returns the Root Coordinator Agent."""
     model_name = adk_config["model_name"]
-    
-    # Load sub-agents from rules.toml
-    rules_path = os.path.join(os.path.dirname(__file__), "../../../rules.toml")
-    if not os.path.exists(rules_path):
-        rules_path = "rules.toml"
-        
-    with open(rules_path, "r") as f:
-        rules_data = toml.load(f)
+    instructions_dict = adk_config["agent_instructions"]
     
     specialists = []
     for agent_def in rules_data.get("agents", []):
         name = agent_def["name"]
         description = agent_def["description"]
-        instruction = AGENT_INSTRUCTIONS.get(name, f"You are the {name} specialist. Your role: {description}")
+        instruction = instructions_dict.get(name, f"You are the {name} specialist. Your role: {description}")
         
         specialist = Agent(
             name=name,

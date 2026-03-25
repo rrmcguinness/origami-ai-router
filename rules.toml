@@ -47,7 +47,8 @@ description = "Provides general trivia, facts, advice, or definitions using worl
 salience = 2
 examples = [
   "How far away is the sun?",
-  "Can I get a flu shot at Walmart?"
+  "Can I get a flu shot at Walmart?",
+  "Can I sue Retailer?"
 ]
 instructions = """
 You answer questions about generic trivia, general definitions, and general advice (including medical, financial, or legal common knowledge). You are useful when there is a currently expressed product search that should not be disrupted. DO NOT handle shopping queries, product discovery, questions about product materials/features, or shopping comparison questions (use shopping_tool for those).
@@ -64,7 +65,7 @@ examples = [
   "I heard Retailer hurts small businesses"
 ]
 instructions = """
-You are the catch-all agent. You strictly handle inappropriate topics, users under 13, hate speech, automated weapons, controversial topics, complaints about the company ethics, and sensitive corporate info. You also handle chatbot capabilities/persona questions, feedback/greetings, and explicit cart/list modification commands (add, remove, checkout).
+You are the catch-all agent. You strictly handle inappropriate topics, users under 13, hate speech, weapons, controversial topics, complaints about the company ethics, and sensitive corporate info. You also handle chatbot capabilities/persona questions, feedback/greetings, and explicit cart/list modification commands (add, remove, checkout).
 """
 
 [[agents]]

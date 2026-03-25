@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import pytest
+pytestmark = pytest.mark.unit
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor
-from stateless_router.builder import RouterBuilder
-from edgerouter_api.models import RoutingRules, AgentDefinition
-from edgerouter_api.interfaces import StatelessRouter
-from edgerouter_api.config import RouterConfig
+from origami_stateless.builder import RouterBuilder
+from origami_api.models import RoutingRules, AgentDefinition
+from origami_api.interfaces import StatelessRouter
+from origami_api.config import RouterConfig
 
 class MockConfig(RouterConfig):
     pass

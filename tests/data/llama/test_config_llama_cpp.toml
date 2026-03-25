@@ -1,0 +1,9 @@
+[application]
+threadPoolSize = 120
+
+[server]
+[[server.routers]]
+name = "llama"
+provider = "auto_local"
+model_path = "models/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf"
+n_threads = 4

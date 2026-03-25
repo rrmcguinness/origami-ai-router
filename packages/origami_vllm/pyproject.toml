@@ -1,0 +1,30 @@
+[project]
+name = "origami-vllm"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Ryan McGuinness", email = "rmcguinness@google.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "accelerate>=1.13.0",
+    "vllm>=0.18.0; sys_platform == 'linux'",
+    "torch>=2.10.0",
+    "transformers>=4.56.0,<5.0.0",
+    "origami-stateless",
+    "origami-common",
+    "origami-api",
+]
+
+[project.scripts]
+gemma-router = "gemma_router:main"
+
+[tool.uv.sources]
+origami-stateless = { workspace = true }
+origami-common = { workspace = true }
+origami-api = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.8.0,<0.9"]
+build-backend = "uv_build"

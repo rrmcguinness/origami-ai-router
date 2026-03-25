@@ -16,14 +16,15 @@ import os
 import time
 import toml
 import pytest
+pytestmark = pytest.mark.integration
 import asyncio
 from typing import List, Dict
 from fastapi.testclient import TestClient
 
 # Local imports
-from edgerouter.main import app
-from edgerouter_api.config import Config
-from common.otel import init_otel, get_tracer, flush_otel
+from origami_router.main import app
+from origami_api.config import Config
+from origami_common.otel import init_otel, get_tracer, flush_otel
 
 # ADK imports
 from google.adk.agents.llm_agent import Agent

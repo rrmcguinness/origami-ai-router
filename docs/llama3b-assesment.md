@@ -1,7 +1,7 @@
-# EdgeRouter: Llama Model Assessment Report
+# OrigamiRouter: Llama Model Assessment Report
 
 ## Overview
-This document evaluates the zero-shot routing accuracy of local Llama models (e.g., Llama 3 8B) when utilized within the stateless EdgeRouter ecosystem. 
+This document evaluates the zero-shot routing accuracy of local Llama models (e.g., Llama 3 8B) when utilized within the stateless OrigamiRouter ecosystem. 
 
 The evaluation simulates a high-concurrency enterprise load test of 100 random routing scenarios across a complex 11-agent matrix, including nuanced intents like `shopping_tool`, `events_shopping_planner`, `decision_assistant`, and `recipe_agent`.
 

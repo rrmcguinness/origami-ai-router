@@ -1,7 +1,7 @@
-# EdgeRouter: Gemma 3 12B Assessment Report
+# OrigamiRouter: Gemma 3 12B Assessment Report
 
 ## Overview
-This document evaluates the zero-shot routing accuracy of Google's local `Gemma 3 12B` instruction-tuned quantized weights (Q4_K_M) when utilized within the stateless EdgeRouter ecosystem. 
+This document evaluates the zero-shot routing accuracy of Google's local `Gemma 3 12B` instruction-tuned quantized weights (Q4_K_M) when utilized within the stateless OrigamiRouter ecosystem. 
 
 The evaluation simulates an enterprise load test of 100 concurrent/asynchronous routing scenarios across our full 11-agent complex matrix.
 
@@ -16,7 +16,7 @@ The evaluation simulates an enterprise load test of 100 concurrent/asynchronous 
 *Note: The test framework expects a strict >95% routing accuracy baseline.*
 
 ## Key Insights & Error Analysis
-Initially, Gemma 3 completely collapsed under the standard prompt structure (acting as a "system" role), yielding only a 30% accuracy. However, after explicitly refactoring the `llama_cpp_router` to fold the rigid JSON system taxonomy directly into the `user` turn, the model's structural grounding was restored and its accuracy shot up to **73%**—effectively tying the Meta Llama 3.1 8B model's performance (75%).
+Initially, Gemma 3 completely collapsed under the standard prompt structure (acting as a "system" role), yielding only a 30% accuracy. However, after explicitly refactoring the `origami_llama_cpp` to fold the rigid JSON system taxonomy directly into the `user` turn, the model's structural grounding was restored and its accuracy shot up to **73%**—effectively tying the Meta Llama 3.1 8B model's performance (75%).
 
 ### Remaining Failure Patterns (The Local AI Glass Ceiling)
 Even with strict prompt formatting corrected, the 12B model suffers from the same zero-shot limitations as all other quantized edge models when exposed to a massive 20-agent matrix without intermediate chain-of-thought processing:

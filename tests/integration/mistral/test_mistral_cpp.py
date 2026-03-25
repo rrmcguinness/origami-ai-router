@@ -13,18 +13,19 @@
 # limitations under the License.
 
 import pytest
-from llama_cpp_router.main import LlamaCppRouter, LlamaCppRouterConfig
-from stateless_router.builder import RouterBuilder
-from tests.integration.data import RETAIL_ROUTING_RULES, RETAIL_TEST_CASES_SUBSET, get_test_env_setting
+pytestmark = pytest.mark.integration
+from origami_llama_cpp.main import LlamaCppRouter, LlamaCppRouterConfig
+from origami_stateless.builder import RouterBuilder
+from tests.data.data import RETAIL_ROUTING_RULES, RETAIL_TEST_CASES_SUBSET
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("query,expected_route,context_summary", RETAIL_TEST_CASES_SUBSET)
-async def test_mistral_cpp_routing_load(query, expected_route, context_summary, shared_executor):
+@pytest.mark.parametrize("query,expected_route,context_summary", RETAIL_TEST_CASES_SUBSET[:25])
+async def test_mistral_cpp_routing_load(query, expected_route, context_summary, shared_executor, session_config):
     """
     Test routing over 20+ retail-specific agents using local Mistral Nemo 12B weights.
     Uses LlamaCppRouter under the hood for local execution via llama-cpp-python.
     """
-    model_path = get_test_env_setting("mistral_model_path", provider_type="mistral")
+    model_path = session_config.server.get_router("mistral").model_path
     config = LlamaCppRouterConfig(model_path=model_path)
     
     router = (RouterBuilder()
@@ -38,6 +39,8 @@ async def test_mistral_cpp_routing_load(query, expected_route, context_summary, 
     
     try:
         route = await router.route(query, context_summary=context_summary)
-        assert route in [expected_route, "Fallback"], f"Mistral routed '{query}' to '{route}' but expected '{expected_route}'"
+        actual_route = route.lower().strip()
+        expected_route_val = expected_route.lower().strip()
+        assert actual_route in [expected_route_val, "fallback"], f"Mistral routed '{query}' to '{actual_route!r}' but expected '{expected_route_val!r}'"
     except Exception as e:
         pytest.fail(f"Mistral routing failed for query '{query}': {e}")

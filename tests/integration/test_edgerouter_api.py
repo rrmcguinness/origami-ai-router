@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import pytest
+pytestmark = pytest.mark.integration
 from fastapi.testclient import TestClient
-from edgerouter.main import app
-from tests.integration.data import RETAIL_TEST_CASES
+from origami_router.main import app
+from tests.data.data import RETAIL_TEST_CASES
 
 client = TestClient(app)
 

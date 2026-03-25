@@ -13,18 +13,19 @@
 # limitations under the License.
 
 import pytest
+pytestmark = pytest.mark.unit
 from unittest.mock import MagicMock, patch
-from edgerouter_api.models import RoutingRules
-from gemini_router.main import GeminiRouter
-from edgerouter_api.config import Config
-from llama_cpp_router.main import LlamaCppRouter, LlamaCppRouterConfig
+from origami_api.models import RoutingRules
+from origami_gemini.main import GeminiRouter
+from origami_api.config import Config
+from origami_llama_cpp.main import LlamaCppRouter, LlamaCppRouterConfig
 
 @pytest.fixture
 def mock_rules():
     return RoutingRules(agents=[{"name": "TestAgent", "description": "Test"}])
 
 @pytest.mark.anyio
-async def test_gemini_router_with_context(mock_rules, session_config):
+async def test_origami_gemini_with_context(mock_rules, session_config):
     """Verifies that GeminiRouter correctly handles the context_summary argument."""
     with patch("google.genai.Client") as mock_client:
         router = GeminiRouter(rules=mock_rules, config=session_config)
@@ -46,9 +47,9 @@ async def test_gemini_router_with_context(mock_rules, session_config):
         assert "User prompt: Hello" in kwargs["contents"]
 
 @pytest.mark.anyio
-async def test_llama_cpp_router_with_context(mock_rules):
+async def test_origami_llama_cpp_with_context(mock_rules):
     """Verifies that LlamaCppRouter correctly handles the context_summary argument."""
-    with patch("llama_cpp_router.main.Llama") as mock_llama:
+    with patch("origami_llama_cpp.main.Llama") as mock_llama:
         router = LlamaCppRouter(rules=mock_rules, config=LlamaCppRouterConfig(model_path="mock.gguf"))
         
         # Mock create_chat_completion

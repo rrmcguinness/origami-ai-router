@@ -2,7 +2,7 @@
 Last Updated: March 24, 2026
 
 ## Overview
-As part of the EdgeRouter architectural refactor to inject model configurations dynamically from the control plane, comprehensive load testing was conducted against the `test_cases.toml` ground truth dataset.
+As part of the OrigamiRouter architectural refactor to inject model configurations dynamically from the control plane, comprehensive load testing was conducted against the `test_cases.toml` ground truth dataset.
 
 This document records the baseline accuracy achieved using the refined agent instructions and details the non-deterministic behavior observed during the evaluation.
 

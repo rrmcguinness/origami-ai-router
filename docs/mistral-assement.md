@@ -1,7 +1,7 @@
-# EdgeRouter: Mistral NeMo 12B Assessment Report
+# OrigamiRouter: Mistral NeMo 12B Assessment Report
 
 ## Overview
-This document evaluates the zero-shot routing accuracy of the `Mistral NeMo 12B Instruct` quantized weights (Q4_K_M) when run natively inside the local stateless EdgeRouter execution pool. 
+This document evaluates the zero-shot routing accuracy of the `Mistral NeMo 12B Instruct` quantized weights (Q4_K_M) when run natively inside the local stateless OrigamiRouter execution pool. 
 
 The evaluation simulates an enterprise load configuration by firing 100 concurrent/asynchronous routing requests targeting the fully expanded 11-agent complex matrix. 
 
