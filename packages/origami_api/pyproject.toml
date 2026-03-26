@@ -1,4 +1,5 @@
 [project]
+license = { text = "Apache-2.0" }
 name = "origami-api"
 version = "0.1.0"
 description = "Core configurations, data models, and stateless routing interfaces for EdgeRouter."
