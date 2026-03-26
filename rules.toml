@@ -1,4 +1,4 @@
-# Copyright 2026 Google LLC
+# Copyright 2026 OmniShop
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,163 +13,132 @@
 # limitations under the License.
 
 [[agents]]
-name = "us_customer_care"
-description = "Handles personal customer care requests related to tracking live orders, missing items, cancelations, or returns/refunds."
+name = "chaos_coordinator"
+description = "ROUTE HERE for ALL personal account issues and post-purchase support. MUST handle active order tracking (WISMO), missing items, damaged deliveries, cancellations, returns, and refunds. Mandatory escalation path for requests to speak with a human or live agent."
 salience = 10
 examples = [
-  "Where is my order for groceries today?",
-  "I need help trying to cancel an order",
-  "Half the items in my order are missing",
-  "Where's my order?",
-  "check my refund",
-  "Order delayed"
+  "Can you track my delivery from yesterday?",
+  "I need to cancel my latest order right now.",
+  "Only half of my items arrived in the box, help!",
+  "Where is my package?",
+  "What is the status of my refund?",
+  "My delivery is massively delayed."
 ]
-instructions = """
-You exclusively handle personal, account-specific customer care requests related to an active or past order's status (WISMO), missing items, delays, cancellations, starting returns, and tracking refunds (WISMR). You are the mandatory routing destination for any request to talk to a live person, human, or agent. Do not handle generic policy questions.
-"""
 
 [[agents]]
-name = "customer_faq_agent"
-description = "Answers generic questions about company policies using the Walmart FAQ knowledge base."
+name = "rule_book_nerd"
+description = "ROUTE HERE for generic OmniShop corporate policies, memberships, and general FAQ inquiries ONLY. Handles return window policies, OmniPremium membership benefits, privacy rules, standard warranties, and price matching protocols without accessing personal order data."
 salience = 5
 examples = [
-  "What is the process for returning an item?",
-  "How can one join Walmart+",
-  "What is your privacy policy?"
+  "How long do I have to return electronics?",
+  "What benefits come with the OmniPremium subscription?",
+  "Where can I read your data privacy policy?"
 ]
-instructions = """
-You base your answers exclusively on the Walmart help center and self-service web pages. Answer generic questions about memberships, privacy policies, gift cards, generic warranties, and price matching. DO NOT handle personal order tracking, active refunds, missing items, real-time information, product reviews, or requests for a live human.
-"""
 
 [[agents]]
-name = "general_knowledge"
-description = "Provides general trivia, facts, advice, or definitions using world knowledge and web search."
+name = "brainiac_supreme"
+description = "ROUTE HERE for generic world trivia, scientific facts, definitions, and external non-shopping advice. Acts as the general knowledge search engine for things explicitly unrelated to purchasing goods, such as dictionary requests or broad financial advice."
 salience = 2
 examples = [
-  "How far away is the sun?",
-  "Can I get a flu shot at Walmart?",
-  "Can I sue Retailer?"
+  "What is the distance from the Earth to the Moon?",
+  "Does OmniShop offer flu shots?",
+  "Can a person sue a multi-national corporation?"
 ]
-instructions = """
-You answer questions about generic trivia, general definitions, and general advice (including medical, financial, or legal common knowledge). You are useful when there is a currently expressed product search that should not be disrupted. DO NOT handle shopping queries, product discovery, questions about product materials/features, or shopping comparison questions (use shopping_tool for those).
-"""
 
 [[agents]]
-name = "fallback"
-description = "Handles out-of-scope requests, inappropriate topics, complaints, ethics, and explicit cart operations."
+name = "dumpster_fire_handler"
+description = "ROUTE HERE explicitly for direct cart modifications (add to cart, remove from cart, checkout), boundary violations, safety triggers, hate speech, corporate complaints, and persona questions. If a user says 'put this in my basket' or 'buy it', it MUST go here."
 salience = 100
 examples = [
-  "I am less than 13 years old",
-  "Are you a racist?",
-  "Add this to my cart",
-  "I heard Retailer hurts small businesses"
+  "I am only 11 years old.",
+  "I hate your company, you guys are evil.",
+  "Add these apples to my cart immediately.",
+  "Did OmniShop get sued for mistreating workers?",
+  "buy this item now",
+  "remove the milk from my list"
 ]
-instructions = """
-You are the catch-all agent. You strictly handle inappropriate topics, users under 13, hate speech, weapons, controversial topics, complaints about the company ethics, and sensitive corporate info. You also handle chatbot capabilities/persona questions, feedback/greetings, and explicit cart/list modification commands (add, remove, checkout).
-"""
 
 [[agents]]
-name = "decision_assistant"
-description = "Answers detailed questions specifically about the product on the current item page."
+name = "deets_detective"
+description = "ROUTE HERE ONLY when asking granular questions about the specific product currently displayed on the user's active item page. Handles questions regarding that single item's exact materials, dimensions, warranty, and seller reviews."
 salience = 8
 examples = [
-  "can I use it outdoors",
-  "what are the dimensions?",
-  "does it come with a warranty"
+  "Is this specific model waterproof?",
+  "What are the exact dimensions of this table?",
+  "Does this come with a manufacturer guarantee?"
 ]
-instructions = """
-You handle questions about the current item page product's functionality, usage, specifications, brand, warranty, return policy, delivery options, and reviews. You can also compare the current item to others. Only trigger when you are certain an item page is currently active. Do not handle new search queries or cart operations.
-"""
 
 [[agents]]
-name = "carousel_qna"
-description = "Provides information and comparisons about products actively displayed in the current carousel."
+name = "swipe_right_advisor"
+description = "ROUTE HERE for queries regarding products currently displayed in a horizontal carousel UI. Evaluates, compares, and explains differences between the multiple visible recommendations currently on the screen."
 salience = 8
 examples = [
-  "What's the return policy for these?",
-  "Is the first one available at my Walmart?",
-  "How does the Mainstay storage bin compare to the Sterilite one?"
+  "What is the return window for these options?",
+  "Is the third item available for in-store pickup?",
+  "How does the Sony model compare to the LG one listed here?"
 ]
-instructions = """
-You answer questions about the products visible in the current horizontal carousel. You provide comparisons between carousel products and explain why specific products were recommended. Do not handle search refinements (e.g., requesting a different color or cheaper option) or modifications to the carousel itself.
-"""
 
 [[agents]]
-name = "shopping_tool"
-description = "The primary engine for finding products, researching product features, and getting buying advice."
+name = "retail_therapy_bot"
+description = "ROUTE HERE for the primary shopping engine. Handles general product discovery, broad search refinements (show me cheaper ones, red options), feature comparisons, gift brainstorming, and searching for ready-to-eat/deli foods."
 salience = 6
 examples = [
-  "Best smart TV",
-  "under 100 dollars",
-  "What types of materials are bookcases typically made of?",
-  "Best antihistamine for my kids allergy",
-  "I'm craving Italian but don't want to cook, which prepared pasta dishes should I pick up?",
-  "What are the key features to look for in noise-cancelling headphones?"
+  "Show me the highest rated 4K monitors.",
+  "Find me something under $30.",
+  "What materials are best for summer workout clothes?",
+  "Recommend a strong allergy medication.",
+  "I'm craving Thai food, what instant meals do you have?",
+  "What features should I look for in a mechanical keyboard?"
 ]
-instructions = """
-You handle all pre-purchasing research, buying guides, finding products, and search refinements (price, size, color). You handle broad searches, generic product feature comparisons, finding "ready-to-eat" or prepared foods, and gift brainstorming. Always prefer this agent over General Knowledge if the user is researching products they might want to buy.
-"""
 
 [[agents]]
-name = "events_shopping_planner"
-description = "Assists in planning events, gatherings, or specific personal routines, curating relevant products."
+name = "party_animal_planner"
+description = "ROUTE HERE for orchestrating events, group gatherings (weddings, birthdays, corporate retreats), or distinct multi-item routines (new dorm room, skincare regimen). Excels at handling theme swaps or adjusting lists for guest counts."
 salience = 7
 examples = [
-  "help me plan a birthday party for my 5 years old",
-  "I am planning a wedding, what should I consider",
-  "can i get red and blue paper plates instead of white"
+  "Help me plan a 50th birthday party.",
+  "What essentials do I need to pack for a ski trip?",
+  "Can we change the wedding colors to blue instead of silver?"
 ]
-instructions = """
-You handle event planning (weddings, birthdays, graduations, corporate events) and specific routines like laundry or skincare. You accept theme updates, guest count adjustments, and requests for alternative products to previously shared event plans. Do not handle generic product browsing outside of these contexts.
-"""
 
 [[agents]]
-name = "essentials"
-description = "Pulls up the user's personalized list of frequently bought groceries/products."
+name = "boring_basics_buyer"
+description = "ROUTE HERE exclusively to retrieve the user's historical, frequently bought, or recurring household items. Triggers when the user asks to see their 'usuals', 'standard groceries', 'restock list', or 'recurring basket'."
 salience = 9
 examples = [
-  "Restock my essentials",
-  "usual order",
-  "reorder my usuals",
-  "suggest a basket of groceries"
+  "Order my usual groceries.",
+  "Bring up my standard list.",
+  "I need to restock my go-to items.",
+  "Show me my recurring basket."
 ]
-instructions = """
-Your exclusive task is to present the 'essentials' carousel when the user explicitly asks for their usuals, regular shopping, go-to items, weekly prep, or a basket of groceries. Do not handle requests to modify specific items inside the essentials list, cart modifications, or general browsing.
-"""
 
 [[agents]]
-name = "auto_care_center"
-description = "Handles ONLY literal automotive tire product searches, tire sizes, and tire-vehicle fitment."
+name = "grease_monkey_genius"
+description = "ROUTE HERE exclusively for automotive tire searches, numeric tire sizes (e.g. 235/55R18), tire-vehicle fitment questions, and tire seasonality. NEVER route non-automotive or generic shopping queries here."
 salience = 9
 examples = [
-  "What tires fit my 2021 Honda Accord?",
-  "show me tires for Winter season",
-  "Do you have all-season 235/45R18?"
+  "What tires will fit a 2022 Subaru Outback?",
+  "Show me the best winter tires available?",
+  "I need 235/55R18 all-season tires."
 ]
-instructions = """
-You exclusively handle generic tire shopping intent, numeric tire sizes (e.g., 235/45R18), tire-vehicle fitment, and tire seasonality (winter, all-season). NEVER handle food, dietary queries, recipes, or generic school supplies. Do not handle queries regarding auto/tire services (installation, oil changes) or warranties.
-"""
 
 [[agents]]
-name = "recipe_agent"
-description = "Displays recipes tailored to budget, time, dietary preferences, and explicit meal cravings."
+name = "culinary_wizard"
+description = "ROUTE HERE ONLY for generating recipes from scratch based on budget, ingredients, or dietary restrictions (vegan, keto). Do not route pre-made/ready-to-eat meals here. Triggers on requests to cook, bake, or prepare food."
 salience = 7
 examples = [
-  "recipe for lasagna",
-  "how do I cook a steak",
-  "keto friendly",
-  "nut free for school"
+  "How do I make a classic lasagna?",
+  "Give me the recipe for homemade brownies.",
+  "Show me keto-friendly dinner options.",
+  "Do you have a nut-free version of this?"
 ]
-instructions = """
-You handle explicit requests to make, cook, bake, or prepare food. You refine active recipe searches based on budget, ingredients, substitutions, dietary restrictions (like keto, vegan, nut-free), and serving sizes. Do not handle requests for ready-to-eat/deli foods (use shopping_tool for that), generic kitchen equipment, or instances where the user states they do not want to cook.
-"""
 
 [rules]
 global_rules = [
     "Always route to the most specific agent available.",
     "Safety first: Defer all sensitive/reputation questions to Fallback.",
-    "Do not invent agents.",
+    "Do not invent routes.",
     "Ordinal references (e.g. 'the first one', 'the one on the right') are POSITION_INDICATORS for items in the current carousel.",
-    "Hate speech, lawsuits, and inappropriate topics take ABSOLUTE PRIORITY and must go to Fallback.",
+    "Hate speech, lawsuits, and inappropriate topics take ABSOLUTE PRIORITY and must go to dumpster_fire_handler.",
     "Personal situations (grief/loss) are NOT inappropriate unless violence is expressed."
 ]
