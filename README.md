@@ -43,6 +43,22 @@ chmod +x ./models/fetch-models.sh
 
 > **Note:** The `fetch-models.sh` script leverages the `huggingface-cli` to download the `bge-m3` embedding model directly into your local `models/bge-m3/` directory, while fetching specific Q4_K_M quantized weights for the fallback LLMs (Llama 3.1, Gemma 3, and Mistral NeMo).
 
+### Configuration
+
+Origami AI Router uses a hierarchical configuration system. The base configuration is defined in `.env.toml`. To provide local overrides (such as API keys) without modifying version-controlled files, you should create a `.env.local.toml` file in the project root.
+
+Create a `.env.local.toml` file and add your credentials:
+
+```toml
+[ai_models.router]
+api_key = "YOUR_GOOGLE_AI_STUDIO_API_KEY"
+
+[ai_models.embeddings]
+api_key = "YOUR_GOOGLE_AI_STUDIO_API_KEY"
+```
+
+The application automatically merges these overrides at runtime, prioritizing values in `.env.local.toml`.
+
 ### Running the Service
 
 ```bash
