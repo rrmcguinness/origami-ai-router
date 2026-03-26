@@ -66,6 +66,49 @@ Origami AI Router utilizes an advanced hybrid routing technique to achieve high-
 
 By embedding these boundaries, Cloud orchestrators retain extreme logical precision at a fraction of the TTFR cost, while Edge fallback node performance (e.g., Llama/vLLM) remains perfectly unburdened by CoT generation loops.
 
+## Customizing the Router
+
+Building a custom router is a two-step process: defining the intent in `rules.toml` and verifying it in `tests/data/test_cases.toml`.
+
+### 1. Update the Agent Definitions (`rules.toml`)
+The `rules.toml` file at the root of the project is the source of truth for all routing decisions. To add a new custom agent, append a new `[[agents]]` block:
+
+```toml
+[[agents]]
+name = "gadget_guru"
+description = "ROUTE HERE for technical specifications of electronics, battery life comparisons, and compatibility questions."
+salience = 7
+examples = [
+  "Does this laptop support USB-C charging?",
+  "What is the battery life of the Sony headphones?",
+  "Is this mouse compatible with macOS?"
+]
+```
+
+- **Description**: This is the most important field for the `GeminiRouter` (Cloud). Be precise.
+- **Examples**: These are critical for the `EmberRouter` (Edge). The more high-quality examples you provide, the better the fast-tier interception.
+
+### 2. Add Regression Tests (`tests/data/test_cases.toml`)
+After adding a new agent, you MUST add test cases to ensure the router identifies the intent correctly. Open `tests/data/test_cases.toml` and add your expected outcomes:
+
+```toml
+[tests]
+cases = [
+  # ... existing cases
+  [ "will this work with my macbook air?", "gadget_guru", "Compatibility query" ],
+  [ "how long does the battery last on the xm5s?", "gadget_guru", "Battery life specification" ]
+]
+```
+
+Run the unit tests to verify your new routing logic:
+```bash
+uv run pytest tests/unit/test_router_builder.py
+```
+
+## Feature Requests
+
+- **Contextual Routers**: Support multiple router classes (e.g., `RetailRouter`, `SupportRouter`) and environment-specific overrides (e.g., `EdgeEnvironment`, `CloudEnvironment`) within the same deployment.
+
 ## Documentation
 
 For detailed information on specific topics, refer to the following documents:
