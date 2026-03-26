@@ -54,10 +54,21 @@ def shared_executor(session_config):
 @pytest.fixture(scope="function", autouse=True)
 def test_span(request):
     """
-    Wraps each test in an OTel span.
+    Wraps each test in an OTel span using the base test name and records parameters as attributes.
     """
     tracer = get_tracer("tests")
-    with tracer.start_as_current_span(request.node.name) as span:
+    
+    # Use the base function name without parameterization brackets
+    span_name = getattr(request.node, "originalname", request.node.name)
+    
+    with tracer.start_as_current_span(span_name) as span:
+        span.set_attribute("pytest.node.name", request.node.name)
+        
+        # Add parameterized test arguments as span attributes
+        if hasattr(request.node, "callspec"):
+            for key, value in request.node.callspec.params.items():
+                span.set_attribute(f"pytest.param.{key}", str(value))
+                
         yield span
 
 @pytest.fixture(scope="session", autouse=True)

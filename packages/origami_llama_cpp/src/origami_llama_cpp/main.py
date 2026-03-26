@@ -170,6 +170,15 @@ class LlamaCppRouter(StatelessRouter):
         
         return await loop.run_in_executor(self.executor, _sync_route)
 
+    def close(self):
+        """Safely disposes of the underlying Llama instance to prevent garbage collection errors."""
+        try:
+            if hasattr(self, 'llm') and self.llm is not None:
+                self.llm.close()
+                self.llm = None
+        except Exception as e:
+            logger.error(f"Error closing Llama instance: {e}")
+
 
 class LlamaCppWorkerPool(StatelessRouter):
     """
@@ -225,6 +234,17 @@ class LlamaCppWorkerPool(StatelessRouter):
                 return "fallback"
             finally:
                 await self.workers.put(worker)
+
+    async def close(self):
+        """Cleans up all workers to cleanly evict models from memory."""
+        self.initialized = False
+        while not self.workers.empty():
+            try:
+                worker = self.workers.get_nowait()
+                if hasattr(worker, "close"):
+                    worker.close()
+            except asyncio.QueueEmpty:
+                break
 
 def get_current_file_path(filename: str) -> Path:
     current_dir: Final[Path] = Path(__file__).parent.resolve()

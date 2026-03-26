@@ -25,6 +25,7 @@ from fastapi.testclient import TestClient
 from origami_router.main import app
 from origami_api.config import Config
 from origami_common.otel import init_otel, get_tracer, flush_otel
+from tests.data.data import RETAIL_TEST_CASES
 
 # ADK imports
 from google.adk.agents.llm_agent import Agent
@@ -36,13 +37,13 @@ os.environ["RUNTIME_ENV"] = "integration"
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("query, expected_agent", [
-    ("I need to return an item I bought yesterday.", "us_customer_care"),
-    ("What tires fit a 2022 Honda Accord?", "auto_care_center"),
-    ("I need a recipe for a vegan lasagna under $20.", "recipe_agent"),
-    ("Check my essentials list for this week.", "essentials"),
+@pytest.mark.parametrize("query, expected_agent, context_summary", [
+    RETAIL_TEST_CASES[6],
+    RETAIL_TEST_CASES[16],
+    RETAIL_TEST_CASES[26],
+    RETAIL_TEST_CASES[36],
 ])
-async def test_adk_preroute_performance(adk_config, query, expected_agent):
+async def test_adk_preroute_performance(adk_config, query, expected_agent, context_summary):
     """
     Measures the TTFR of the pre-routing approach:
     Call Router -> Initialize Agent with Route -> Call LLM.

@@ -58,7 +58,13 @@ class GeminiRouter(StatelessRouter):
                 vertexai=True
             )
         
-        self.system_prompt = rules.to_system_prompt()
+        base_prompt = rules.to_system_prompt()
+        # Enforce highly-compressed JSON-embedded Chain of Thought reasoning for Gemini (slashing latency and preserving Llama's TTFR)
+        cot_instruction = (
+            'Respond ONLY with valid JSON. Use ultra-brief shorthand for reasoning.\n'
+            '{ "reasoning": "kwd:brakes->auto->dumpster_fire_handler", "route": "AgentName" }'
+        )
+        self.system_prompt = base_prompt.replace(rules.output_schema_instruction, cot_instruction)
         self.tracer = get_tracer("origami_gemini")
         self.environment = os.environ.get("RUNTIME_ENV", None)
         
@@ -66,6 +72,7 @@ class GeminiRouter(StatelessRouter):
             "system_instruction": self.system_prompt,
             "response_mime_type": "application/json",
             "temperature": router_model.temperature if router_model else 1.0,
+            "max_output_tokens": 100,
         }
         
         thinking_config = getattr(config, "thinking_config", None)

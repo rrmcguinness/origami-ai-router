@@ -33,37 +33,7 @@ for case in _tests_data.get("tests", {}).get("cases", []):
 
 RETAIL_TEST_CASES_SUBSET = RETAIL_TEST_CASES[:100]
 
-def load_hierarchical_data(provider_type: str = None) -> dict:
-    base_path = os.path.join(_base_dir, "test_config.toml")
-    with open(base_path, "rb") as f:
-        data = tomllib.load(f)
-        
-    config_file = None
-    if provider_type:
-        if "gemini" in provider_type.lower():
-            config_file = "gemini/test_config_gemini.toml"
-        elif "gemma" in provider_type.lower() or "llama" in provider_type.lower():
-            config_file = "llama/test_config_llama_cpp.toml"
-        elif "vllm" in provider_type.lower():
-            config_file = "vllm/test_config_vllm.toml"
-            
-    if config_file:
-        override_path = os.path.join(_base_dir, config_file)
-        if os.path.exists(override_path):
-            with open(override_path, "rb") as f:
-                override_data = tomllib.load(f)
-            
-            def deep_merge(d1, d2):
-                for k, v in d2.items():
-                    if isinstance(v, dict) and k in d1 and isinstance(d1[k], dict):
-                        deep_merge(d1[k], v)
-                    else:
-                        d1[k] = v
-                return d1
-                
-            data = deep_merge(data, override_data)
-            
-    return data
+
 
 def get_rules_for_provider(provider_type: str) -> RoutingRules:
     """
@@ -92,6 +62,7 @@ def get_rules_for_provider(provider_type: str) -> RoutingRules:
                 name=agent.get("name"),
                 description=agent.get("description"),
                 instructions=agent.get("instructions"),
+                examples=agent.get("examples", []),
                 salience=agent.get("salience", 0)
             )
             for agent in agents_data

@@ -55,7 +55,18 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Gracefully shuts down the global executor."""
+    """Gracefully shuts down the global executor and active routers."""
+    for router_name, router in state.active_routers.items():
+        try:
+            if hasattr(router, "close"):
+                import asyncio
+                if asyncio.iscoroutinefunction(router.close):
+                    await router.close()
+                else:
+                    router.close()
+        except Exception as e:
+            print(f"Error closing router {router_name}: {e}")
+            
     if state.executor:
         print("Shutting down EdgeRouter thread pool...")
         state.executor.shutdown(wait=True)

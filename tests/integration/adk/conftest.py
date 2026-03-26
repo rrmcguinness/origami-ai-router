@@ -143,7 +143,7 @@ def root_agent(adk_config, rules_data):
         name="RootCoordinator",
         description="Main coordinator for the multi-agent shopping assistant.",
         instruction="""You are the ultimate shopping concierge.
-        1. ALWAYS use 'get_routing_decision' first to identify the right specialized agent.
+        1. ALWAYS use 'get_routing_decision' first to identify the right specialized agent. (The router backend natively provides deep reasoning.)
         2. Transfer the user's request to that agent using the 'transfer_to_agent' tool.
         3. Do not try to solve complex specialist tasks yourself; you are the coordinator.""",
         model=model_name,

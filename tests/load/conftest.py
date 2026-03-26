@@ -65,7 +65,7 @@ def engine_service(load_test_config):
     
     # Wait for the server to be ready
     base_url = load_test_config["base_url"]
-    timeout = 15
+    timeout = 120
     start_time = time.time()
     while time.time() - start_time < timeout:
         try:
@@ -75,7 +75,7 @@ def engine_service(load_test_config):
                     break
         except Exception:
             pass
-        time.sleep(0.5)
+        time.sleep(1.0)
     else:
         pytest.fail("Server failed to start in time for Gemini tests.")
     

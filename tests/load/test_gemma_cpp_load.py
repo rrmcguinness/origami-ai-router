@@ -21,6 +21,7 @@ import asyncio
 from origami_router.main import app
 from tests.data.data import RETAIL_TEST_CASES
 from origami_common.otel import get_tracer, flush_otel
+from opentelemetry.propagate import inject
 
 @pytest.fixture(scope="module", autouse=True)
 def otel_flush():
