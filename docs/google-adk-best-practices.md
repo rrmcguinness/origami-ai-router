@@ -1,6 +1,6 @@
 # Enterprise Agent Orchestration: OrigamiRouter & ADK
 
-This document outlines the architectural patterns and real-time performance characteristics for integrating the **Walmart OrigamiRouter** with the **Agent Development Kit (ADK)**. 
+This document outlines the architectural patterns and real-time performance characteristics for integrating the **OmniShop OrigamiRouter** with the **Agent Development Kit (ADK)**. 
 
 Our benchmark testing demonstrates that your method of agent selection—whether relying on dynamic tool-calling or native contextual pre-routing—has a profound impact on the final latency (Time-to-Actual-Response).
 

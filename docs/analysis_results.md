@@ -15,7 +15,7 @@ The transition to the 11-agent architecture introduced new specialized agents li
 | `order my shopping list.` | `essentials` | `fallback` | "Order/Checkout" operations are now handled by the Fallback agent (cart commands). |
 | `How much does W+ cost?` | `us_customer_care` | `customer_faq_agent` | Membership pricing is an FAQ. |
 | `What are the terms and conditions...` | `us_customer_care` | `customer_faq_agent` | Policy questions move to FAQ agent. |
-| `Can I get a tire rotation...` | `fallback` | `us_customer_care` | `us_customer_care` handles Walmart "services"; `auto_care_center` only does tire search. |
+| `Can I get a tire rotation...` | `fallback` | `us_customer_care` | `us_customer_care` handles OmniShop "services"; `auto_care_center` only does tire search. |
 
 ## Actions Taken
 
