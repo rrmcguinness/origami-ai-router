@@ -97,6 +97,11 @@ async def setup_routers(server_cfg, rules: RoutingRules, shared_executor: Thread
             builder.with_provider(GeminiRouter, config=config)
             active_routers[name] = builder.build()
                                     
+        elif provider == "ember":
+            from origami_ember.router import EmberRouter
+            builder.with_provider(EmberRouter, config=config, **model_config)
+            active_routers[name] = builder.build()
+
         elif provider == "auto_local":
             vllm_available = False
             try:

@@ -61,3 +61,10 @@ This document tracks the comprehensive architectural shifts, performance optimiz
 * **Original:** Agents were fed into the system prompt based on their arbitrary array order in the configuration file, causing LLM attention mechanisms to sometimes prioritize low-priority fallbacks (like trivia handlers) simply because of their string position.
 * **What Changed:** Introduced a dynamic `salience: int` property to the core `AgentDefinition` Pydantic model. Before evaluating any routes, the `origami_api` automatically sorts all mapped agents in descending order based on their assigned salience score.
 * **Outcome:** High-risk boundaries and safety nets (e.g. `dumpster_fire_handler` with `salience = 100`) are guaranteed to appear at the absolute top of the LLM context window. This directly exploits autoregressive attention bias, ensuring critical safety boundary rules are neurologically evaluated first.
+
+## 9. Ember Fast-Tier (Embedding-Based Pre-Routing)
+**Date:** March 2026
+
+* **Original:** The system relied exclusively on heavy generative LLMs (Gemini, Mistral, Llama) to classify every single intent. This meant even simple, unambiguous queries suffered from inherent autoregressive generation latency and high compute costs.
+* **What Changed:** Introduced the `origami_ember` package, establishing an ultra-fast, local embedding layer powered by the `BAAI/bge-m3` model via `sentence-transformers`. Implemented a "Per-Example" embedding strategy with asymmetric instruction prefixes (`"Represent this sentence..."`). Added a threshold-based interception hook (`confidence_threshold = 0.8`) in the main FastAPI route.
+* **Outcome:** The Ember Fast-Tier mathematically evaluates cosine similarity and intercepts clear intents in **sub-20 milliseconds**, achieving an incredibly high **~48 RPS** natively on standard CPUs. By confidently bypassing the heavy LLM layer for roughly 50% of incoming queries, the overall system throughput skyrockets while slashing cloud API costs and average Time-To-Actual-Response (TTAR).

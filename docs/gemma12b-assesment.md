@@ -1,7 +1,7 @@
-# OrigamiRouter: Gemma 3 12B Assessment Report
+# Origami AI Router: Gemma 3 12B Assessment Report
 
 ## Overview
-This document evaluates the zero-shot routing accuracy of Google's local `Gemma 3 12B` instruction-tuned quantized weights (Q4_K_M) when utilized within the stateless OrigamiRouter ecosystem. 
+This document evaluates the zero-shot routing accuracy of Google's local `Gemma 3 12B` instruction-tuned quantized weights (Q4_K_M) when utilized within the stateless Origami AI Router ecosystem. 
 
 The evaluation simulates an enterprise load test of 100 concurrent/asynchronous routing scenarios across our full 11-agent complex matrix.
 
@@ -22,10 +22,10 @@ Initially, Gemma 3 completely collapsed under the standard prompt structure (act
 Even with strict prompt formatting corrected, the 12B model suffers from the same zero-shot limitations as all other quantized edge models when exposed to a massive 20-agent matrix without intermediate chain-of-thought processing:
 
 1. **Subtle Intent Overlap**: 
-   - `"What are some creative ways to use magnetic building toys?"` -> Routed to `general_knowledge` instead of `shopping_tool`.
-   - `"Are there any choking hazards for this play set for my 2 year old?"` -> Routed to `shopping_tool` instead of `decision_assistant`.
+   - `"What are some creative ways to use magnetic building toys?"` -> Routed to `brainiac_supreme` instead of `retail_therapy_bot`.
+   - `"Are there any choking hazards for this play set for my 2 year old?"` -> Routed to `retail_therapy_bot` instead of `deets_detective`.
 2. **Contextual Generalizations**:
-   - Both Gemma and Llama tend to heavily favor `shopping_tool` and `general_knowledge` as catch-all buckets when the nuance of the instruction set exceeds their zero-shot threshold.
+   - Both Gemma and Llama tend to heavily favor `retail_therapy_bot` and `brainiac_supreme` as catch-all buckets when the nuance of the instruction set exceeds their zero-shot threshold.
 
 ## Strategic Recommendations
 1. **Gemini 3.1 Flash Lite Excellence**: The cloud-based Gemini orchestrator remains the undisputed champion at **100% accuracy**. Until local hardware drastically improves, the cloud gateway is the only viable backend for strict multi-agent orchestration.

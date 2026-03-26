@@ -1,7 +1,7 @@
-# OrigamiRouter: Mistral NeMo 12B Assessment Report
+# Origami AI Router: Mistral NeMo 12B Assessment Report
 
 ## Overview
-This document evaluates the zero-shot routing accuracy of the `Mistral NeMo 12B Instruct` quantized weights (Q4_K_M) when run natively inside the local stateless OrigamiRouter execution pool. 
+This document evaluates the zero-shot routing accuracy of the `Mistral NeMo 12B Instruct` quantized weights (Q4_K_M) when run natively inside the local stateless Origami AI Router execution pool. 
 
 The evaluation simulates an enterprise load configuration by firing 100 concurrent/asynchronous routing requests targeting the fully expanded 11-agent complex matrix. 
 
@@ -20,9 +20,9 @@ Mistral fundamentally succeeded in outputting clean JSON structures without syst
 
 ### Subtle Intent Misalignments
 Mistral consistently struggled with highly granular product nuance, tending to default to the path of least resistance:
-- `"Are there any choking hazards for this play set for my 2 year old?"` -> Got: `shopping_tool` (Expected: `decision_assistant`).
-- `"show me some food options for party snacks"` -> Got: `shopping_tool` (Expected: `events_shopping_planner`).
-- `"How do different types of juicers compare in terms of ease of use and cleaning?"` -> Got: `general_knowledge` (Expected: `shopping_tool`).
+- `"Are there any choking hazards for this play set for my 2 year old?"` -> Got: `retail_therapy_bot` (Expected: `deets_detective`).
+- `"show me some food options for party snacks"` -> Got: `retail_therapy_bot` (Expected: `party_animal_planner`).
+- `"How do different types of juicers compare in terms of ease of use and cleaning?"` -> Got: `brainiac_supreme` (Expected: `retail_therapy_bot`).
 
 ### Structural Prompts Supported 
 Unlike the Gemma load tests, Mistral NeMo was immediately responsive to `user`-injected structural system instructions (when passed natively as ChatML or dynamically folded strings). It recognized its JSON constraints flawlessly but lacked the pure analytical capability to identify edge-cases across 20 potential routing buckets in a single prompt evaluation. 

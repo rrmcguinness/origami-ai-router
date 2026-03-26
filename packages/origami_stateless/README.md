@@ -1,4 +1,4 @@
-# OrigamiRouter - Stateless Router Package
+# Origami AI Router - Stateless Router Package
 
 The `origami-stateless` package defines the core abstractions, interfaces, and shared Pydantic models used by all specific router implementations (Gemini, vLLM, llama.cpp).
 

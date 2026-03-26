@@ -51,6 +51,22 @@ download_model \
     "Mistral-Nemo-Instruct-2407-Q4_K_M.gguf"
 echo ""
 
+echo "--- 4. Fetching BAAI/bge-m3 (Sentence Transformers) ---"
+if [ -d "bge-m3" ]; then
+    echo "[SKIP] Model directory 'bge-m3' already exists. Skipping download."
+else
+    echo "⬇️ Downloading BAAI/bge-m3 via huggingface-cli..."
+    # uv will find the project root and run the CLI from our virtual environment
+    uv run huggingface-cli download BAAI/bge-m3 --local-dir bge-m3
+    
+    if [ $? -eq 0 ]; then
+        echo "[SUCCESS] Saved BAAI/bge-m3 to models/bge-m3/"
+    else
+        echo "[ERROR] Failed to download BAAI/bge-m3"
+    fi
+fi
+echo ""
+
 echo "======================================================="
 echo "✅ EdgeRouter Model Provisioning Complete!"
 echo "Make sure your '.env.toml' paths point to these newly downloaded .gguf files."

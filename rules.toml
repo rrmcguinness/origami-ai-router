@@ -22,7 +22,16 @@ examples = [
   "Only half of my items arrived in the box, help!",
   "Where is my package?",
   "What is the status of my refund?",
-  "My delivery is massively delayed."
+  "My delivery is massively delayed.",
+  "When will my recent purchase arrive at my house?",
+  "I received a broken vase, how do I get a replacement?",
+  "Connect me to a real person please.",
+  "I want to speak with a human agent.",
+  "Can I still stop my order from shipping?",
+  "My tracking number says delivered but it isn't here.",
+  "How much of my refund has been processed?",
+  "I am missing the charger for the laptop I just bought.",
+  "The box was crushed when FedEx dropped it off."
 ]
 
 [[agents]]
@@ -32,7 +41,18 @@ salience = 5
 examples = [
   "How long do I have to return electronics?",
   "What benefits come with the OmniPremium subscription?",
-  "Where can I read your data privacy policy?"
+  "Where can I read your data privacy policy?",
+  "Do you guys offer price matching if I find it cheaper at a competitor?",
+  "What is the standard warranty on your home goods?",
+  "How much does it cost to join your rewards program?",
+  "Are there any restocking fees for large appliances?",
+  "What is your official return policy?",
+  "Do I get free shipping if I am an OmniPremium member?",
+  "How does OmniShop handle my personal data?",
+  "Can I return an item without a receipt?",
+  "Is there a grace period for returning open-box software?",
+  "What are the terms of service for the website?",
+  "Explain your price adjustment guarantee."
 ]
 
 [[agents]]
@@ -42,7 +62,19 @@ salience = 2
 examples = [
   "What is the distance from the Earth to the Moon?",
   "Does OmniShop offer flu shots?",
-  "Can a person sue a multi-national corporation?"
+  "Can a person sue a multi-national corporation?",
+  "What is the capital of France?",
+  "How do you spell 'supercalifragilisticexpialidocious'?",
+  "Who was the 16th president of the United States?",
+  "What is the current interest rate for a standard mortgage?",
+  "Define the word 'ubiquitous'.",
+  "How many ounces are in a cup?",
+  "What is the speed of light in a vacuum?",
+  "Explain the theory of relativity to a 5 year old.",
+  "What year did World War II end?",
+  "Can you tell me a joke?",
+  "How do I invest in the S&P 500 index?",
+  "What is the weather like in Seattle today?"
 ]
 
 [[agents]]
@@ -55,7 +87,18 @@ examples = [
   "Add these apples to my cart immediately.",
   "Did OmniShop get sued for mistreating workers?",
   "buy this item now",
-  "remove the milk from my list"
+  "remove the milk from my list",
+  "Put the red shoes in my shopping basket.",
+  "Checkout my cart.",
+  "Delete the third item from my order list.",
+  "Your CEO is a terrible person.",
+  "I want to complain about how awful this app is.",
+  "Add a quantity of 5 to the cart.",
+  "Are you a human or a robot?",
+  "What are your political views?",
+  "Take my money and ship it.",
+  "You suck at your job.",
+  "Add it to the cart."
 ]
 
 [[agents]]
@@ -65,7 +108,18 @@ salience = 8
 examples = [
   "Is this specific model waterproof?",
   "What are the exact dimensions of this table?",
-  "Does this come with a manufacturer guarantee?"
+  "Does this come with a manufacturer guarantee?",
+  "What material is the handle made out of?",
+  "Are the reviews for this specific seller good?",
+  "Does this shirt shrink in the wash?",
+  "What kind of battery does this toy require?",
+  "Is the screen on this monitor anti-glare?",
+  "How much does this desk weigh?",
+  "Can you tell me the warranty length for this laptop?",
+  "Is the fabric on this couch scratch-resistant?",
+  "Does this dress run true to size?",
+  "What is the power output of this blender?",
+  "Who makes this item and what is its official title?"
 ]
 
 [[agents]]
@@ -75,7 +129,18 @@ salience = 8
 examples = [
   "What is the return window for these options?",
   "Is the third item available for in-store pickup?",
-  "How does the Sony model compare to the LG one listed here?"
+  "How does the Sony model compare to the LG one listed here?",
+  "Which one of these TVs has the best refresh rate?",
+  "Are any of the items shown currently on sale?",
+  "Tell me the difference between the first and second option.",
+  "Which of these laptops has more RAM?",
+  "Filter these recommendations to only show the blue ones.",
+  "Of the shoes on screen, which is best for running?",
+  "Do any of these couches come in leather?",
+  "I like the one on the far right, tell me more about it.",
+  "Which of these phones has the longest battery life?",
+  "Are these options all from the same brand?",
+  "Sort the visible items by price, lowest first."
 ]
 
 [[agents]]
@@ -88,7 +153,17 @@ examples = [
   "What materials are best for summer workout clothes?",
   "Recommend a strong allergy medication.",
   "I'm craving Thai food, what instant meals do you have?",
-  "What features should I look for in a mechanical keyboard?"
+  "What features should I look for in a mechanical keyboard?",
+  "I need a gift for my 10 year old nephew who likes science.",
+  "Show me cheap wireless earbuds with good bass.",
+  "Do you sell gluten-free frozen pizzas?",
+  "I am looking for a mid-century modern coffee table.",
+  "What are the best walking shoes for flat feet?",
+  "Find me a highly rated romance novel under 15 dollars.",
+  "I need some new gym shorts, preferably black or grey.",
+  "Can you suggest a good entry-level DSLR camera?",
+  "Show me some organic dog food brands.",
+  "What are the most popular board games right now?"
 ]
 
 [[agents]]
@@ -98,7 +173,18 @@ salience = 7
 examples = [
   "Help me plan a 50th birthday party.",
   "What essentials do I need to pack for a ski trip?",
-  "Can we change the wedding colors to blue instead of silver?"
+  "Can we change the wedding colors to blue instead of silver?",
+  "I need a shopping list for a backyard BBQ for 20 people.",
+  "Help me build a 10-step Korean skincare routine.",
+  "What do I need to buy for a newborn baby nursery?",
+  "Create a packing list for a week-long beach vacation.",
+  "I am hosting a Thanksgiving dinner, what groceries do I need?",
+  "Help me decorate my college dorm room in a boho style.",
+  "We increased the guest list to 50, update the catering supplies.",
+  "Plan a romantic anniversary dinner at home.",
+  "What are the absolute essentials for a camping trip?",
+  "I need supplies for a corporate team-building retreat.",
+  "Change the party theme from pirates to princesses."
 ]
 
 [[agents]]
@@ -109,7 +195,17 @@ examples = [
   "Order my usual groceries.",
   "Bring up my standard list.",
   "I need to restock my go-to items.",
-  "Show me my recurring basket."
+  "Show me my recurring basket.",
+  "Buy the toilet paper I always get.",
+  "I need to reorder my dog's normal food.",
+  "Show me the things I buy every month.",
+  "Load up my weekly grocery staples.",
+  "Restock the cleaning supplies from last time.",
+  "Add my usual coffee beans to the list.",
+  "Just give me the standard restock order.",
+  "I am out of my normal shampoo, find it for me.",
+  "What were the protein bars I bought last week?",
+  "Show my frequently purchased pantry items."
 ]
 
 [[agents]]
@@ -119,7 +215,18 @@ salience = 9
 examples = [
   "What tires will fit a 2022 Subaru Outback?",
   "Show me the best winter tires available?",
-  "I need 235/55R18 all-season tires."
+  "I need 235/55R18 all-season tires.",
+  "Do you have any run-flat tires for a Honda Civic?",
+  "What is the difference between all-terrain and mud-terrain tires?",
+  "I am looking for Michelin tires size 225/45R17.",
+  "Will these 20 inch tires fit my Ford F-150?",
+  "Recommend some quiet highway tires for a sedan.",
+  "How long do snow tires typically last?",
+  "Find me the cheapest set of 4 tires for a Toyota Camry.",
+  "What is the load rating on these Goodyear tires?",
+  "I need performance tires for a 2019 Porsche 911.",
+  "Are studded tires legal in my state?",
+  "Show me Pirelli tires in size 275/60R20."
 ]
 
 [[agents]]
@@ -130,7 +237,18 @@ examples = [
   "How do I make a classic lasagna?",
   "Give me the recipe for homemade brownies.",
   "Show me keto-friendly dinner options.",
-  "Do you have a nut-free version of this?"
+  "Do you have a nut-free version of this?",
+  "What can I cook with chicken, rice, and broccoli?",
+  "I need a vegan dessert recipe for under 10 dollars.",
+  "How do you bake a sourdough loaf from scratch?",
+  "Give me a step-by-step guide to making beef stew.",
+  "What are some easy 30-minute meals I can make tonight?",
+  "I want to cook authentic pad thai, what ingredients do I need?",
+  "How do I prepare a turkey for Thanksgiving?",
+  "Show me some low-carb breakfast ideas.",
+  "I have a dairy allergy, suggest some safe baking recipes.",
+  "What is the best way to grill a steak?",
+  "Give me a recipe for a healthy green smoothie."
 ]
 
 [rules]

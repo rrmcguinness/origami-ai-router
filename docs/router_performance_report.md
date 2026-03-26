@@ -1,4 +1,4 @@
-# Origami Router Performance & Cost Comparison
+# Origami AI Router Performance & Cost Comparison
 
 This report details the comparative throughput scaling and architectural costs of the different routing implementations tested.
 
@@ -12,6 +12,7 @@ This report details the comparative throughput scaling and architectural costs o
 
 | Router Implementation | Average RPS | Cost (HA at 120 RPS) | Notes (Pros & Cons) |
 |-----------------------|-------------|----------------------|-----------------------|
+| **Ember (Fast-Tier)**<br>*(CPU Only)* | **~48.0 RPS**<br>*(Mac M3 Baseline)* | **~$100 / mo**<br>*(Requires ~3 CPU nodes)* | **Pros**: Ultra-cheap, blazing fast local embeddings (sub-20ms). Eliminates massive LLM overhead.<br>**Cons**: Lower absolute accuracy (zero-shot maxes ~50-60%). Best used as a threshold interceptor. |
 | **Llama.cpp**<br>*(CPU Only)* | **10.86 RPS**<br>*(Mac M3 Baseline)* | **~$3,300 / mo**<br>*(Requires ~12 CPU nodes)* | **Pros**: Extremely flexible, runs on any Edge hardware (including Apple Silicon), no GPU dependencies.<br>**Cons**: High latency per request, poor concurrent throughput. |
 | **Llama.cpp Worker Pool**<br>*(GPU Offload)* | **26.38 RPS**<br>*(RTX 4090)* | **~$2,500 / mo**<br>*(Requires ~5 L4 GPU nodes)* | **Pros**: Strict GBNF grammar guarantee, supports hybrid GPU layer offloading smoothly.<br>**Cons**: No continuous batching. Loading the model multiple times wastes VRAM. |
 | **vLLM Engine**<br>*(Native GPU Batching)* | **501.88 RPS**<br>*(RTX 4090)* | **~$1,000 / mo**<br>*(Requires 2 L4 GPU nodes for HA)* | **Pros**: Phenomenal throughput using PagedAttention. Dynamically batches 200+ concurrent requests gracefully.<br>**Cons**: Strict hardware requirements (Linux + NVIDIA GPU). |
@@ -32,15 +33,15 @@ The following table projects the monthly estimated cost and infrastructure node 
 
 ## Architectural Integration Flow
 
-The following sequence diagram illustrates how the stateless **OrigamiRouter** serves as the high-speed traffic controller within a stateful enterprise agent architecture.
+The following sequence diagram illustrates how the stateless **Origami AI Router** serves as the high-speed traffic controller within a stateful enterprise agent architecture.
 
 ```mermaid
 sequenceDiagram
     participant U as User
     participant O as Stateful Orchestrator
     participant DB as Conversation State (Redis/Firestore)
-    participant ER as OrigamiRouter (Stateless)
-    participant SA as Specialized Agent (e.g. us_customer_care)
+    participant ER as Origami AI Router (Stateless)
+    participant SA as Specialized Agent (e.g. chaos_coordinator)
 
     U->>O: "Where is my package #88219?"
     O->>DB: Load Conversation History
@@ -49,7 +50,7 @@ sequenceDiagram
     rect rgb(240, 248, 255)
     Note over O,ER: High-Speed Routing Phase
     O->>ER: Route Query (Prompt + History Metadata)
-    ER-->>O: { "route": "us_customer_care" }
+    ER-->>O: { "route": "chaos_coordinator" }
     end
 
     O->>SA: Invoke Specialized Logic
@@ -60,12 +61,15 @@ sequenceDiagram
 ```
 
 ## Executive Summary
-When evaluating routing architectures for a sustained 120 RPS load in Google Cloud, the choice fundamentally comes down to **Self-Hosted GPU (vLLM)** vs. **Managed Cloud Services (Gemini)**.
+When evaluating routing architectures for a sustained 120 RPS load in Google Cloud, the choice fundamentally comes down to **Self-Hosted GPU (vLLM)** vs. **Managed Cloud Services (Gemini)**, augmented by an **Embedding Fast-Tier (Ember)**.
 
-**1. The Self-Hosted Winner: vLLM on GKE**
+**1. The Interception Layer: Ember (CPU)**
+Regardless of the heavy LLM backend chosen, deploying the **EmberRouter (BGE-M3)** at the Edge provides mathematically instantaneous (sub-20ms) intent classification for ~50% of incoming queries at a fraction of the hardware cost (~$100/mo).
+
+**2. The Self-Hosted Winner: vLLM on GKE**
 If data privacy, strict on-premise execution, or predictable flat-rate billing is mandatory, the **vLLM architecture** is overwhelmingly the superior choice. Because `vLLM` comfortably blasts past 500 RPS by dynamically batching requests via PagedAttention, you only need to provision **two base L4 GPU nodes** to guarantee High-Availability redundancy (~$1,000/mo). This completely invalidates the `llama.cpp` approach, which would require scaling 5+ GPU nodes just to prevent VRAM locking.
 
 **2. The Managed Option: Gemini Flash API**
 While relying on the **Managed Gemini Flash API** eliminates underlying Kubernetes overhead, the reality of high-volume production routing presents major financial caveats. Standard pay-as-you-go tiers are subject to strict TPM (Tokens Per Minute) and RPM limit quotas (especially aggressively enforced on the new Gemini 3.0 model families). To guarantee a sustained 120 RPS without 429 throttling errors, enterprise users must purchase **Provisioned Throughput (PT)**, which dramatically inflates the baseline cost far beyond the standard token-volume metric of ~$1,160/mo.
 
-**Conclusion**: If the operational footprint of managing a Kubernetes cluster is unacceptable, the Gemini API is the logical route—but be prepared for the hidden costs of Provisioned Throughput to guarantee enterprise SLAs. Otherwise, dedicating two L4 GPUs to run **vLLM** provides absolute price predictability and raw, uncapped inference performance for the OrigamiRouter payload.
+**Conclusion**: If the operational footprint of managing a Kubernetes cluster is unacceptable, the Gemini API is the logical route—but be prepared for the hidden costs of Provisioned Throughput to guarantee enterprise SLAs. Otherwise, dedicating two L4 GPUs to run **vLLM** provides absolute price predictability and raw, uncapped inference performance for the Origami AI Router payload.

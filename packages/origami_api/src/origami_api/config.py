@@ -213,6 +213,8 @@ class Config:
 from pydantic import BaseModel
 
 class RouterConfig(BaseModel):
-    pass
+    query_instruction: str = ""
+    enable_per_example: bool = True
+    confidence_threshold: float = 0.5
 
 

@@ -66,7 +66,28 @@ async def route_query(request: RouteRequest, req: Request):
             span.set_attribute("error.message", f"Router not configured for model: {request.model}")
             raise HTTPException(status_code=400, detail=f"Unsupported model: {request.model}")
 
-        # Execute routing via the async interface
+        # Fast-Tier Optimization: Try EmberRouter first if it's available and not the primary target
+        if request.model != "ember" and "ember" in state.active_routers:
+            ember_router = state.active_routers["ember"]
+            try:
+                # We need to access ember_config to get the threshold
+                threshold = getattr(ember_router, "ember_config", None)
+                if threshold:
+                    threshold_val = threshold.confidence_threshold
+                    outcome, confidence = await ember_router.route_detailed(request.prompt, context_summary=request.context_summary)
+                    
+                    if confidence >= threshold_val:
+                        span.set_attribute("router.fast_tier_hit", True)
+                        span.set_attribute("router.fast_tier_confidence", confidence)
+                        span.set_attribute("router.outcome", outcome)
+                        return RouteResponse(route=outcome)
+                    else:
+                        span.set_attribute("router.fast_tier_hit", False)
+                        span.set_attribute("router.fast_tier_confidence", confidence)
+            except Exception as e:
+                logger.warning("Fast-Tier pre-routing failed: %s", e)
+
+        # Execute routing via the primary target router
         try:
             outcome = await target_router.route(request.prompt, context_summary=request.context_summary)
         except Exception as e:

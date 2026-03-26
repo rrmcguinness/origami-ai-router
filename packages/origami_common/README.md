@@ -1,6 +1,6 @@
-# OrigamiRouter - Common Package
+# Origami AI Router - Common Package
 
-The `common` package provides shared utilities, configuration management, and observability foundations for the OrigamiRouter project.
+The `common` package provides shared utilities, configuration management, and observability foundations for the Origami AI Router project.
 
 ## Key Modules
 

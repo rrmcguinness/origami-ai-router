@@ -1,4 +1,4 @@
-# OrigamiRouter - vLLM Router Package
+# Origami AI Router - vLLM Router Package
 
 The `origami-vllm` package provides high-throughput inference for open-source models (like Gemma) using the vLLM engine.
 

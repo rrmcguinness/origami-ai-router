@@ -1,6 +1,6 @@
-# OrigamiRouter
+# Origami AI Router
 
-OrigamiRouter is an enterprise-grade LLM routing and inference service designed for scalability, observability, and flexibility. It supports multiple backends including Google Gemini, vLLM, and llama.cpp, allowing for optimized model delivery across various environments.
+Origami AI Router is an enterprise-grade LLM routing and inference service designed for scalability, observability, and flexibility. It supports multiple backends including Google Gemini, vLLM, and llama.cpp, allowing for optimized model delivery across various environments.
 
 ## Features
 
@@ -19,6 +19,7 @@ This project is managed as a `uv` workspace:
 - `packages/origami_gemini`: Google Gemini model implementation.
 - `packages/origami_vllm`: high-performance inference using vLLM (Linux/CUDA).
 - `packages/origami_llama_cpp`: Local model execution via llama.cpp.
+- `packages/origami_ember`: Ultra-fast "Fast-Tier" routing using BGE-M3 text embeddings for sub-10ms interception.
 
 ## Getting Started
 
@@ -27,11 +28,20 @@ This project is managed as a `uv` workspace:
 - Python 3.13 (managed via `uv`)
 - `uv` package manager
 
-### Installation
+### Installation & Model Provisioning
+
+Origami AI Router dynamically leverages local models for off-cloud Edge inference and Fast-Tier routing. To ensure you have the required `.gguf` weights and `BAAI/bge-m3` embedding tensors downloaded, run the setup commands below:
 
 ```bash
+# 1. Sync the workspace dependencies
 uv sync --all-packages
+
+# 2. Provision the required local models (~20GB total download)
+chmod +x ./models/fetch-models.sh
+./models/fetch-models.sh
 ```
+
+> **Note:** The `fetch-models.sh` script leverages the `huggingface-cli` to download the `bge-m3` embedding model directly into your local `models/bge-m3/` directory, while fetching specific Q4_K_M quantized weights for the fallback LLMs (Llama 3.1, Gemma 3, and Mistral NeMo).
 
 ### Running the Service
 
@@ -39,9 +49,15 @@ uv sync --all-packages
 uv run origami-router
 ```
 
-## Advanced Architectures: Zero-Fat Chain of Thought Routing
+## Advanced Architectures
 
-OrigamiRouter utilizes an advanced hybrid routing technique to achieve high-accuracy heuristic reasoning at the Cloud layer, while mathematically stripping out the latency cost typically associated with LLM Chain-of-Thought (CoT).
+### 1. Tiered Routing Optimization (Fast-Tier)
+Origami AI Router implements a multi-stage routing pipeline to dramatically increase Throughput (RPS) and lower average latency. When a heavy reasoning model (like Gemini or Mistral) is requested, the prompt is first evaluated by the `EmberRouter`—a local, CPU-efficient embedding model (`BAAI/bge-m3`). 
+
+If the user's intent matches a known agent definition with a high confidence score (configurable via `confidence_threshold`), the router intercepts the request and responds in milliseconds, completely bypassing the heavy LLM execution. 
+
+### 2. Zero-Fat Chain of Thought Routing
+Origami AI Router utilizes an advanced hybrid routing technique to achieve high-accuracy heuristic reasoning at the Cloud layer, while mathematically stripping out the latency cost typically associated with LLM Chain-of-Thought (CoT).
 
 **Methodology for Minimizing Time-To-First-Route (TTFR):**
 1. **Delegative API Over Orchestration Hooks:** Do not force high-level ADK agents to generate lengthy XML `<thinking>` blocks simply to determine routing. Instead, rely natively on the lower-level API Router (`get_routing_decision`), stripping out multi-turn execution latency.

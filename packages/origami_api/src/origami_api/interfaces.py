@@ -23,4 +23,12 @@ class StatelessRouter(ABC):
         """
         pass
 
+    async def route_detailed(self, user_query: str, context_summary: Optional[str] = None) -> tuple[str, float]:
+        """
+        Processes the query and returns a tuple of (Agent name, confidence score).
+        Default implementation returns 1.0 confidence for models that don't support it.
+        """
+        outcome = await self.route(user_query, context_summary)
+        return outcome, 1.0
+
 

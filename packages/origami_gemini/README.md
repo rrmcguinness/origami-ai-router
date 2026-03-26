@@ -1,4 +1,4 @@
-# OrigamiRouter - Gemini Router Package
+# Origami AI Router - Gemini Router Package
 
 The `origami-gemini` package implements the `origami-stateless` interfaces for Google's Gemini models using the `google-genai` SDK.
 
@@ -6,7 +6,7 @@ The `origami-gemini` package implements the `origami-stateless` interfaces for G
 
 - **Gemini Pro/Flash Support**: Integration with latest Google Gemini models.
 - **Vertex AI & Generative AI SDK**: High-level abstractions for model interaction.
-- **Stateless Implementation**: Adheres to the core routing standards of the OrigamiRouter project.
+- **Stateless Implementation**: Adheres to the core routing standards of the Origami AI Router project.
 
 ## Configuration
 

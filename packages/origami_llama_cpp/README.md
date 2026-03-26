@@ -1,4 +1,4 @@
-# OrigamiRouter - llama.cpp Router Package
+# Origami AI Router - llama.cpp Router Package
 
 The `origami-llama-cpp` package provides local LLM inference via the `llama-cpp-python` bindings. It is optimized for cross-platform support (macOS Apple Silicon and Linux CUDA).
 

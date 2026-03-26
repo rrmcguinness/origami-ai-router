@@ -1,6 +1,6 @@
-# Enterprise Agent Orchestration: OrigamiRouter & ADK
+# Enterprise Agent Orchestration: Origami AI Router & ADK
 
-This document outlines the architectural patterns and real-time performance characteristics for integrating the **OmniShop OrigamiRouter** with the **Agent Development Kit (ADK)**. 
+This document outlines the architectural patterns and real-time performance characteristics for integrating the **OmniShop Origami AI Router** with the **Agent Development Kit (ADK)**. 
 
 Our benchmark testing demonstrates that your method of agent selection—whether relying on dynamic tool-calling or native contextual pre-routing—has a profound impact on the final latency (Time-to-Actual-Response).
 
@@ -9,12 +9,12 @@ Our benchmark testing demonstrates that your method of agent selection—whether
 ## 🏗️ Architectural Patterns
 
 ### 1. The Dynamic Coordinator (Tool-Calling)
-In this legacy pattern, a "Root Coordinator" agent is initialized with explicit access to the OrigamiRouter API as a registered Python function tool. The Root agent analyzes the input and makes its own decision to execute the routing.
+In this legacy pattern, a "Root Coordinator" agent is initialized with explicit access to the Origami AI Router API as a registered Python function tool. The Root agent analyzes the input and makes its own decision to execute the routing.
 
 **Flow:**
 1. User sends prompt.
 2. **LLM Turn 1**: Root Agent is invoked, identifies the need for a specialist, and generates a structured tool call.
-3. **Tool Execution**: OrigamiRouter API translates the context and returns the target specialist name.
+3. **Tool Execution**: Origami AI Router API translates the context and returns the target specialist name.
 4. **Context Transfer**: Root Agent transfers the memory state to the targeted agent.
 5. **LLM Turn 2**: Specialist Agent streams the final generative answer back to the user.
 
@@ -24,13 +24,13 @@ In this legacy pattern, a "Root Coordinator" agent is initialized with explicit 
 ### 2. The Contextual Pre-Router (The ADK Callback Approach)
 This is the **modern best-practice**. Instead of giving the LLM the *option* to route, we use the ADK's native `before_agent_callback` lifecycle hook to intercept the execution stream *before* the LLM is even invoked. 
 
-The application calls the ultra-fast stateless OrigamiRouter API, sets the user's intent to the context state, and dynamically injects the correct behavior instructions into the ADK Agent context block.
+The application calls the ultra-fast stateless Origami AI Router API, sets the user's intent to the context state, and dynamically injects the correct behavior instructions into the ADK Agent context block.
 
 **Flow:**
 1. User sends prompt via standard ADK runner sequence.
-2. **Callback Hook**: `before_agent_callback` temporarily halts execution and pings the OrigamiRouter API (`/route`).
+2. **Callback Hook**: `before_agent_callback` temporarily halts execution and pings the Origami AI Router API (`/route`).
 3. **State Injection**: The router returns the target agent classification, which is saved to `context.state`.
-4. **Dynamic Instruction**: The ADK evaluates the `instruction` callback, dynamically loading the specialist parameters (e.g. `us_customer_care` rules) into memory based on the state.
+4. **Dynamic Instruction**: The ADK evaluates the `instruction` callback, dynamically loading the specialist parameters (e.g. `chaos_coordinator` rules) into memory based on the state.
 5. **LLM Turn 1**: The Agent natively generates the **First and Final Response** precisely targeted towards the user's intent.
 
 ---
@@ -79,7 +79,7 @@ def dynamic_instruction(context):
 
 # 3. Mount into a single unified Agent
 agent = Agent(
-    name="OrigamiRouter_Core",
+    name="OrigamiAIRouter_Core",
     description="A natively pre-routed agent executing single-turn workflows.",
     instruction=dynamic_instruction,           # Loaded sequentially
     before_agent_callback=route_interceptor    # Executed instantly
@@ -96,4 +96,4 @@ async for event in runner.run_async(new_message=user_prompt):
 ## 🏆 Final Recommendation
 **Do not use autonomous Tool-Calling LLMs to coordinate standard high-traffic systems.** 
 
-By leveraging the ADK's `before_agent_callback` to defer routing logic strictly to the stateless OrigamiRouter API, you entirely eliminate redundant "cognitive" LLM turns and collapse total network wait times by approximately **50%**, ensuring a hyper-responsive user-facing architecture.
+By leveraging the ADK's `before_agent_callback` to defer routing logic strictly to the stateless Origami AI Router API, you entirely eliminate redundant "cognitive" LLM turns and collapse total network wait times by approximately **50%**, ensuring a hyper-responsive user-facing architecture.
