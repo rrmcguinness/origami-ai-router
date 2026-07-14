@@ -27,9 +27,15 @@ dev = [
     "pytest-asyncio>=1.3.0",
     "pytest-cov>=4.1.0",
 ]
+docs = [
+    "mkdocs>=1.6.0",
+    "mkdocs-material>=9.5.0",
+]
 
 [project.scripts]
 origami-router = "origami_router:main"
+origami-docs = "origami_router.docs:serve"
+origami-docs-serve = "origami_router.docs:serve"
 
 [build-system]
 requires = ["uv_build>=0.8.0,<0.9"]

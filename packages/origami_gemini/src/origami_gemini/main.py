@@ -38,7 +38,7 @@ class GeminiRouter(StatelessRouter):
         super().__init__(rules=rules, config=config, executor=executor, **kwargs)
         
         router_model = config.ai_models.get_model("router")
-        self.model_name = router_model.model_name if router_model and router_model.model_name else "gemini-3.1-flash-lite-preview"
+        self.model_name = router_model.model_name if router_model and router_model.model_name else "gemini-3.5-flash"
         
         raw_api_key = router_model.api_key if router_model else None
         api_key = raw_api_key if raw_api_key and raw_api_key != "[ENCRYPTION_KEY]" else os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")

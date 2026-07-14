@@ -20,3 +20,4 @@ uv.lock
 scratch/
 models/*.gguf
 models/bge-m3/*
+site/

@@ -1,0 +1,69 @@
+site_name: Origami AI Router
+site_description: Enterprise-grade LLM routing and inference service designed for scalability, observability, and sub-second latency.
+site_author: Ryan McGuinness
+repo_url: https://github.com/rrmcguinness/origami-ai-router
+repo_name: rrmcguinness/origami-ai-router
+
+theme:
+  name: material
+  language: en
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.top
+    - navigation.sections
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - md_in_html
+
+nav:
+  - Overview: index.md
+  - Architecture:
+      - Overview: architecture/index.md
+      - Routing Logic & Engine: architecture/routing-logic.md
+      - ADK Best Practices: architecture/adk-best-practices.md
+      - Latency & Routing Fixes: architecture/routing-fix.md
+  - Setup & Operations:
+      - NVIDIA CUDA Setup: setup/cuda.md
+      - Optimization Strategies: setup/optimizations.md
+  - Benchmarks & Evaluations:
+      - Performance Report: evaluations/performance-report.md
+      - Analysis Results: evaluations/analysis-results.md
+      - Model Assessments:
+          - Overview & Composite: evaluations/models/composite.md
+          - Gemini 3.5 Flash: evaluations/models/gemini.md
+          - Gemma 3 12B: evaluations/models/gemma12b.md
+          - Llama 3.1 8B: evaluations/models/llama3b.md
+          - Mistral NeMo 12B: evaluations/models/mistral.md

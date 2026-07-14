@@ -11,7 +11,7 @@ The `origami-llama-cpp` package provides local LLM inference via the `llama-cpp-
 
 ## Installation
 
-For GPU support, specific installation flags are required. See the [CUDA Setup Guide](../../docs/CUDA_SETUP.md) for more details.
+For GPU support, specific installation flags are required. See the [CUDA Setup Guide](../../docs/setup/cuda.md) for more details.
 
 ```bash
 # Standard installation

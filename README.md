@@ -127,12 +127,12 @@ uv run pytest tests/unit/test_router_builder.py
 
 ## Documentation
 
-For detailed information on specific topics, refer to the following documents:
+For detailed information on specific topics, refer to our [Documentation Site](docs/index.md) or specific guides:
 
-- [Architecture Overview](docs/architecture-overview.md) - Deep dive into the system design.
-- [ADK Usage Guide](docs/google-adk-best-practices.md) - How to use the Agent Development Kit.
-- [Performance & Accuracy Report](docs/router_performance_report.md) - Performance and model accuracy metrics.
-- [CUDA Setup](docs/nvidia-cuda-setup.md) - Instructions for GPU acceleration.
+- [Architecture Overview](docs/architecture/index.md) - Deep dive into system design and multi-tier routing.
+- [ADK Best Practices](docs/architecture/adk-best-practices.md) - How to leverage pre-routing callbacks in Agent Development Kit.
+- [Performance & Accuracy Report](docs/evaluations/performance-report.md) - Throughput, RPS scaling, and benchmark metrics.
+- [CUDA Setup Guide](docs/setup/cuda.md) - Instructions for GPU compilation and hardware acceleration.
 
 ## Development
 
