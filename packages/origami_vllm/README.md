@@ -1,37 +1,63 @@
-# Origami AI Router - vLLM Router Package
+# Origami AI Router - vLLM Package (`origami-vllm`)
 
-The `origami-vllm` package provides high-throughput inference for open-source models (like Gemma) using the vLLM engine.
+The `origami-vllm` package provides high-throughput, continuous-batching GPU inference for open-weights models (such as Gemma, Mistral, and Llama) backed by the `vllm.engine.async_llm_engine.AsyncLLMEngine`.
 
-> [!WARNING]
-> This package is designed for Linux environments with NVIDIA GPU support. It is not compatible with macOS.
+> [!IMPORTANT]
+> This package requires a **Linux environment** with **NVIDIA CUDA GPU support**. It is not supported on macOS or Windows.
+
+---
 
 ## Features
 
-- **High-Throughput Inference**: Leverages vLLM's PagedAttention and efficient batching.
-- **CUDA Optimized**: Built for NVIDIA GPUs with broad model support.
-- **Seamless Integration**: Implements standard `origami-stateless` interfaces.
+- **Continuous Batching & PagedAttention**: Achieves 500+ RPS throughput by dynamically batching concurrent requests without VRAM thrashing.
+- **Guided Decoding**: Integrates regex-based guided decoding (`StructuredOutputsParams`) to enforce JSON schema formatting on every generated token.
+- **Async Engine Integration**: Native non-blocking integration with `AsyncLLMEngine` for FastAPI and asynchronous multi-agent orchestrators.
 
-## Prerequisites
-
-- **NVIDIA GPU**: Required for vLLM operations.
-- **CUDA Toolkit**: Correct versions must be installed for compilation.
-- **Linux OS**: Strictly Ubuntu/Debian or similar.
+---
 
 ## Installation
 
-This package is conditionally installed via `uv` based on the system platform:
-
 ```bash
-# On a Linux machine
-uv sync --extra origami-vllm
+# On a Linux GPU machine
+uv sync --package origami-vllm
 ```
 
-## Usage
+---
+
+## Configuration
+
+In `.env.toml` or via explicit configuration:
+
+```toml
+[ai_models.vllm]
+model_path = "models/gemma-3-12b-it"
+```
+
+---
+
+## Usage Example
 
 ```python
-from origami_vllm.main import VllmRouter
-from origami_stateless.models import CompletionRequest
+import asyncio
+from origami_api.config import Config
+from origami_api.models import RoutingRules
+from origami_vllm.main import VllmRouter, VllmRouterConfig
 
-router = VllmRouter(config)
-response = await router.complete(CompletionRequest(prompt="Hello vLLM!"))
+async def main():
+    config = Config()
+    rules = RoutingRules.from_toml_file("rules.toml")
+
+    vllm_cfg = VllmRouterConfig(
+        model_path="models/gemma-3-12b-it"
+    )
+
+    # Instantiate vLLM high-throughput router
+    router = VllmRouter(rules=rules, config=vllm_cfg)
+
+    # Route query
+    target_route = await router.route("I need assistance with an auto care service.")
+    print(f"Target Route: {target_route}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```

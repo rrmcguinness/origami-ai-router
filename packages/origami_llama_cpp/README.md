@@ -1,36 +1,57 @@
-# Origami AI Router - llama.cpp Router Package
+# Origami AI Router - `llama.cpp` Edge Package (`origami-llama-cpp`)
 
-The `origami-llama-cpp` package provides local LLM inference via the `llama-cpp-python` bindings. It is optimized for cross-platform support (macOS Apple Silicon and Linux CUDA).
+The `origami-llama-cpp` package provides offline, local edge LLM routing executing quantized GGUF models (Meta Llama 3.1 8B, Gemma 3 12B, Mistral NeMo 12B) via the `llama-cpp-python` C++ bindings.
 
-## Features
+---
 
-- **Local Model Execution**: Run GGUF models locally on your workstation or edge device.
-- **Metal & CUDA Support**: Hardware acceleration on macOS (Metal) and Linux (CUDA).
-- **Fast Development Cycle**: Ideal for testing and development without cloud costs.
-- **Stateless Router Compliance**: Adheres to the core routing standards.
+## Key Features
 
-## Installation
+- **Structural Grammar Forcing (GBNF)**: Guarantees 100% syntactically valid JSON output on every inference turn using strict context-free grammars.
+- **Model-Specific Chat Templates**: Auto-detects model architectures (`llama-3`, `gemma`, `chatml`) and dynamically folds system prompts into user instructions when required to prevent structural collapse.
+- **Hardware Acceleration**: Multi-threaded CPU execution with Apple Silicon Metal and Linux NVIDIA CUDA offloading (`n_gpu_layers=-1`).
+- **Worker Pool Architecture**: Provides `LlamaCppWorkerPool` for multithreaded queue-based request distribution across local compute cores.
 
-For GPU support, specific installation flags are required. See the [CUDA Setup Guide](../../docs/setup/cuda.md) for more details.
+---
+
+## Installation & Hardware Setup
+
+For CUDA offloading on Linux:
 
 ```bash
-# Standard installation
-uv sync
-
-# Force CUDA compilation
-CUDACXX=/path/to/nvcc uv pip install --no-cache-dir llama-cpp-python
+export CUDACXX=/path/to/nvcc
+CMAKE_ARGS="-DGGML_CUDA=on" uv pip install llama-cpp-python --reinstall --no-binary llama-cpp-python --no-cache-dir
 ```
 
-## Usage
+---
+
+## Usage Example
 
 ```python
-from origami_llama_cpp.main import LlamaCppRouter
-from origami_stateless.models import CompletionRequest
+import asyncio
+from origami_api.config import Config, RouterConfig
+from origami_api.models import RoutingRules
+from origami_llama_cpp.main import LlamaCppRouter, LlamaCppRouterConfig
 
-router = LlamaCppRouter(config)
-response = await router.complete(CompletionRequest(prompt="Hello llama.cpp!"))
+async def main():
+    config = Config()
+    rules = RoutingRules.from_toml_file("rules.toml")
+
+    # Define router configuration
+    llama_cfg = LlamaCppRouterConfig(
+        model_path="models/llama-3.1-8b-instruct.Q4_K_M.gguf",
+        n_threads=8
+    )
+
+    # Initialize local edge router
+    router = LlamaCppRouter(rules=rules, config=llama_cfg)
+
+    # Route request locally
+    target_route = await router.route("Can you recommend a recipe for tonight?")
+    print(f"Routed to: {target_route}")
+
+    # Dispose of native bindings
+    router.close()
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
-
-## Testing
-
-This router is frequently used for local integration tests and performance benchmarks. See the `tests/` directory for examples of how to configure and run tests with this router.

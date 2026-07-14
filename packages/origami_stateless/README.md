@@ -1,26 +1,44 @@
-# Origami AI Router - Stateless Router Package
+# Origami AI Router - Stateless Router Package (`origami-stateless`)
 
-The `origami-stateless` package defines the core abstractions, interfaces, and shared Pydantic models used by all specific router implementations (Gemini, vLLM, llama.cpp).
+The `origami-stateless` package provides the design pattern abstractions, fluent builder utilities, and provider-agnostic factories for constructing `StatelessRouter` instances.
 
-## Core Components
+---
 
-- **`interface.py`**: Defines the `Router` base class and standard methods for LLM interaction.
-- **`models.py`**: Contains Pydantic models for request and response validation, ensuring consistency across different backends.
-- **`builder.py`**: Provides a common builder pattern for initializing router instances with standard configurations.
+## Key Modules & Classes
 
-## Architecture
+- **`origami_stateless.builder`**:
+  - `RouterBuilder`: Fluent builder pattern for constructing `StatelessRouter` instances with provider classes, configurations, rules, and shared thread pools.
 
-This package follows a "plug-and-play" architecture. Specific router implementations inherit from the base classes defined here to provide consistent behavior regardless of the underlying inference engine.
+---
 
-## Usage
+## Architecture Pattern
 
-When implementing a new router:
+This package decouples provider-specific backend logic (Gemini, Llama.cpp, vLLM, Ember) from system setup. Swapping inference engines requires modifying only the provider registration parameter in the builder pipeline.
+
+---
+
+## Usage Example
 
 ```python
-from origami_stateless.interface import Router
-from origami_stateless.models import CompletionRequest
+from concurrent.futures import ThreadPoolExecutor
+from origami_api.config import Config
+from origami_api.models import RoutingRules
+from origami_gemini.main import GeminiRouter
+from origami_stateless.builder import RouterBuilder
 
-class MyNewRouter(Router):
-    async def complete(self, request: CompletionRequest):
-        # Implementation...
+# 1. Initialize configuration and rules
+config = Config()
+rules = RoutingRules.from_toml_file("rules.toml")
+executor = ThreadPoolExecutor(max_workers=8)
+
+# 2. Build router using the fluent Builder pattern
+router = (
+    RouterBuilder()
+    .with_provider(GeminiRouter, config=config)
+    .with_rules(rules)
+    .with_executor(executor)
+    .build()
+)
+
+# 3. Router is ready for async execution
 ```

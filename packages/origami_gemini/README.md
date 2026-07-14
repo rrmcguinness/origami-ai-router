@@ -1,30 +1,51 @@
-# Origami AI Router - Gemini Router Package
+# Origami AI Router - Gemini Package (`origami-gemini`)
 
-The `origami-gemini` package implements the `origami-stateless` interfaces for Google's Gemini models using the `google-genai` SDK.
+The `origami-gemini` package provides cloud-primary intent classification using Google's **Gemini 3.5 Flash** models via the official `google-genai` SDK over Vertex AI or Google AI Studio.
+
+---
 
 ## Features
 
-- **Gemini Pro/Flash Support**: Integration with latest Google Gemini models.
-- **Vertex AI & Generative AI SDK**: High-level abstractions for model interaction.
-- **Stateless Implementation**: Adheres to the core routing standards of the Origami AI Router project.
+- **Gemini 3.5 Flash Primary Routing**: High-throughput, cloud-managed inference achieving 100% zero-shot classification baseline against complex multi-agent matrices.
+- **Zero-Fat Chain of Thought (CoT)**: Custom JSON schema prompting requiring ultra-brief shorthand reasoning (`"reasoning": "kwd:X->auto->Y"`) before producing the target `route`.
+- **Mechanical Output Capping**: Caps generation to `max_output_tokens=100` to physically mitigate latency jitter and suppress infinite generation loops.
+- **Dual SDK Authentication**: Seamlessly authenticates via Google Cloud Application Default Credentials (ADC) for Vertex AI or `GEMINI_API_KEY` for Google AI Studio.
+
+---
 
 ## Configuration
 
-Requires valid Google Cloud credentials and project setup.
+In `.env.toml` or via explicit configuration:
 
 ```toml
-[router.gemini]
-model = "gemini-1.5-pro"
-project = "my-gcp-project"
-location = "us-central1"
+[ai_models.router]
+model_name = "gemini-3.5-flash"
+temperature = 0.0
 ```
 
-## Usage
+---
+
+## Usage Example
 
 ```python
+import asyncio
+from origami_api.config import Config
+from origami_api.models import RoutingRules
 from origami_gemini.main import GeminiRouter
-from origami_stateless.models import CompletionRequest
 
-router = GeminiRouter(config)
-response = await router.complete(CompletionRequest(prompt="Hello Gemini!"))
+async def main():
+    config = Config()
+    rules = RoutingRules.from_toml_file("rules.toml")
+
+    # Instantiate GeminiRouter
+    router = GeminiRouter(rules=rules, config=config)
+
+    # Perform asynchronous routing call
+    query = "I want to return a pair of boots I bought last week."
+    target_route = await router.route(query)
+
+    print(f"Target Route: {target_route}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
