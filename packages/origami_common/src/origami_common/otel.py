@@ -78,8 +78,25 @@ def init_otel(config: Config = None):
 
     if not otel_cfg.project_id:
         app_cfg = getattr(config, 'application', None)
+        project_id = None
         if app_cfg:
-            otel_cfg.project_id = getattr(app_cfg, 'google_project_id', getattr(app_cfg, 'projectId', None)) or "rmcguinness"
+            project_id = getattr(app_cfg, 'google_project_id', None) or getattr(app_cfg, 'projectId', None)
+        
+        if not project_id:
+            project_id = (
+                os.environ.get("GOOGLE_CLOUD_PROJECT") or 
+                os.environ.get("GCP_PROJECT") or 
+                os.environ.get("GCLOUD_PROJECT") or 
+                os.environ.get("GOOGLE_PROJECT")
+            )
+            if not project_id:
+                try:
+                    import google.auth
+                    _, project_id = google.auth.default()
+                except Exception:
+                    pass
+        
+        otel_cfg.project_id = project_id or "rmcguinness"
 
     logger.info(f"Initializing OpenTelemetry for service: {otel_cfg.service_name} (Project: {otel_cfg.project_id})")
 

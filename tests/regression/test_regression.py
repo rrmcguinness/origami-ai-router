@@ -42,10 +42,11 @@ async def test_full_accuracy_regression(query, expected_route, context_summary, 
                   .with_executor(shared_executor)
                   .build())
     else: # provider_type == "llama_cpp":
-        llama_model = app_config.ai_models.get_model("llama") if hasattr(app_config, "ai_models") else None
-        model_path = llama_model.model_path if llama_model and hasattr(llama_model, "model_path") else ""
+        llama_router = app_config.server.get_router("llama") if hasattr(app_config, "server") else None
+        model_path = llama_router.model_path if llama_router and hasattr(llama_router, "model_path") else ""
+        n_threads = llama_router.n_threads if llama_router and hasattr(llama_router, "n_threads") else 4
         
-        config = LlamaCppRouterConfig(model_path=model_path)
+        config = LlamaCppRouterConfig(model_path=model_path, n_threads=n_threads)
         
         router = (RouterBuilder()
                   .with_executor(shared_executor)

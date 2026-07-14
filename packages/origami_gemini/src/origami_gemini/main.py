@@ -38,13 +38,10 @@ class GeminiRouter(StatelessRouter):
         super().__init__(rules=rules, config=config, executor=executor, **kwargs)
         
         router_model = config.ai_models.get_model("router")
-        self.model_name = router_model.model_name if router_model else "gemini-3.1-flash-lite-preview"
+        self.model_name = router_model.model_name if router_model and router_model.model_name else "gemini-3.1-flash-lite-preview"
         
-        project_id = config.application.google_project_id or config.application.projectId
-        api_key = router_model.api_key if router_model else None
-        
-        if not project_id and not api_key:
-             raise ValueError("project_id or api_key must be configured for GeminiRouter.")
+        raw_api_key = router_model.api_key if router_model else None
+        api_key = raw_api_key if raw_api_key and raw_api_key != "[ENCRYPTION_KEY]" else os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
         
         if api_key:
             self.client = genai.Client(
@@ -52,9 +49,36 @@ class GeminiRouter(StatelessRouter):
                 vertexai=False
             )
         else:
+            project_id = (
+                getattr(config.application, "google_project_id", "") or 
+                getattr(config.application, "projectId", "") or 
+                os.environ.get("GOOGLE_CLOUD_PROJECT") or 
+                os.environ.get("GCP_PROJECT") or 
+                os.environ.get("GCLOUD_PROJECT") or 
+                os.environ.get("GOOGLE_PROJECT")
+            )
+            
+            if not project_id:
+                try:
+                    import google.auth
+                    _, project_id = google.auth.default()
+                except Exception:
+                    pass
+
+            if not project_id:
+                raise ValueError("project_id or api_key must be configured for GeminiRouter.")
+                
+            location = getattr(config.application, "location", None) or "global"
+            if location == "us-central1":
+                location = "global"
+
+            # Map AI Studio specific model name to Vertex AI model name
+            if self.model_name == "gemini-3.1-flash-lite-preview":
+                self.model_name = "gemini-3.5-flash"
+
             self.client = genai.Client(
                 project=project_id,
-                location=config.application.location,
+                location=location,
                 vertexai=True
             )
         

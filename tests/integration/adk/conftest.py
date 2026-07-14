@@ -61,22 +61,42 @@ def adk_config(rules_data):
     
     init_otel(config)
     
-    # Extract API key and project
-    if config.application.google_project_id:
-        os.environ["GOOGLE_PROJECT"] = config.application.google_project_id
+    # Auto-detect project ID and initialize Vertex AI environment for ADK
+    project_id = (
+        getattr(config.application, "google_project_id", "") or 
+        getattr(config.application, "projectId", "") or 
+        os.environ.get("GOOGLE_CLOUD_PROJECT") or 
+        os.environ.get("GCP_PROJECT") or 
+        os.environ.get("GCLOUD_PROJECT") or 
+        os.environ.get("GOOGLE_PROJECT")
+    )
+    
+    if not project_id:
+        try:
+            import google.auth
+            _, project_id = google.auth.default()
+        except Exception:
+            pass
+
+    if project_id:
+        os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+        os.environ["GOOGLE_PROJECT"] = project_id
+        os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "true"
+        if "GOOGLE_CLOUD_LOCATION" not in os.environ:
+            os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
 
     router_model = config.ai_models.get_model("router")
+    raw_key = router_model.api_key if router_model else None
+    api_key_env = (raw_key if raw_key and raw_key != "[ENCRYPTION_KEY]" else None) or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
     
-    if router_model and router_model.api_key and router_model.api_key != "[ENCRYPTION_KEY]":
-        os.environ["GOOGLE_API_KEY"] = router_model.api_key
-    else:
-        api_key_env = os.environ.get("GEMINI_API_KEY", getattr(config.application, "api_key", ""))
+    if api_key_env:
         os.environ["GOOGLE_API_KEY"] = api_key_env
-
-    if not os.environ["GOOGLE_API_KEY"]:
-        raise ValueError("GOOGLE_API_KEY not found in environment")
+    elif not project_id:
+        raise ValueError("Neither GOOGLE_API_KEY nor Google Cloud Project ADC found in environment")
         
-    model_name = router_model.model_name
+    model_name = router_model.model_name if router_model and router_model.model_name else "gemini-3.1-flash-lite-preview"
+    if os.environ.get("GOOGLE_GENAI_USE_VERTEXAI") == "true" and model_name == "gemini-3.1-flash-lite-preview":
+        model_name = "gemini-3.5-flash"
 
     if not model_name:
         raise ValueError("Model name not found in configuration")
