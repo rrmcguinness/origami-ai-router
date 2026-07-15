@@ -12,44 +12,76 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import logging
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 from opentelemetry.propagate import extract
 from origami_api.config import Config
 from origami_router import state
+from origami_router.pipeline import (
+    RoutingPipeline,
+    PipelineContext,
+    OpsSecPreFilterStep,
+    FastTierStep,
+    TargetProviderStep,
+)
 from origami_common.otel import get_tracer
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
 
 class RouteRequest(BaseModel):
     model: str
     prompt: str
     context_summary: Optional[str] = None
 
+
 class RouteResponse(BaseModel):
     route: str
+
+
+class ProtectedRouteResponse(BaseModel):
+    route: str
+    threat_detected: bool
+    matched_attack: Optional[str] = None
+    category: Optional[str] = None
+    severity: Optional[str] = None
+    confidence: float = 0.0
+    action_taken: Optional[str] = None
+    sanitized_prompt: str
+
+
+async def ensure_state_initialized():
+    """Ensures routers and telemetry are active in dynamic test execution environments."""
+    if state.tracer is None:
+        state.tracer = get_tracer("edgerouter_service")
+
+    if not state.active_routers:
+        if state.config is None:
+            state.config = Config()
+        shared_executor = state.get_executor()
+        rules_path = getattr(state.config.application, "rules_routing", "rules_router.toml")
+        if not os.path.exists(rules_path) and os.path.exists("rules_router.toml"):
+            rules_path = "rules_router.toml"
+        rules = state.load_rules(rules_path)
+        server_cfg = getattr(state.config, "server", None)
+        await state.setup_routers(server_cfg, rules, shared_executor)
+
+        if getattr(state.config.application, "enable_ops_sec", False) and state.ops_sec_analyzer is None:
+            ops_sec_path = getattr(state.config.application, "rules_ops_sec", "rules_ops_sec.toml")
+            state.setup_ops_sec(ops_sec_path, shared_executor)
+
 
 @router.post("/route", response_model=RouteResponse)
 async def route_query(request: RouteRequest, req: Request):
     """
     Main routing endpoint.
-    Participates in OTel span if provided in headers, otherwise starts a new one.
+    Orchestrates routing via a decoupled RoutingPipeline step chain.
     """
-    if state.tracer is None:
-        state.tracer = get_tracer("edgerouter_service")
-    
-    # In test environments, startup_event might not have fired
-    if not state.active_routers:
-        if state.config is None:
-            state.config = Config()
-        
-        shared_executor = state.get_executor()
-        rules_path = "rules.toml"
-        rules = state.load_rules(rules_path)
-        server_cfg = getattr(state.config, "server", None)
-        await state.setup_routers(server_cfg, rules, shared_executor)
-
+    await ensure_state_initialized()
     ctx = extract(req.headers)
 
     with state.tracer.start_as_current_span(
@@ -57,43 +89,81 @@ async def route_query(request: RouteRequest, req: Request):
         attributes={"router.model_requested": request.model},
         context=ctx
     ) as span:
-        
-        model_name = request.model.lower()
-        target_router = state.active_routers.get(model_name)
-        
-        if not target_router:
-            span.set_attribute("error", True)
-            span.set_attribute("error.message", f"Router not configured for model: {request.model}")
-            raise HTTPException(status_code=400, detail=f"Unsupported model: {request.model}")
+        pipeline_ctx = PipelineContext(
+            model=request.model,
+            prompt=request.prompt,
+            context_summary=request.context_summary,
+            span=span,
+            sanitized_prompt=request.prompt,
+        )
 
-        # Fast-Tier Optimization: Try EmberRouter first if it's available and not the primary target
-        if request.model != "ember" and "ember" in state.active_routers:
-            ember_router = state.active_routers["ember"]
-            try:
-                # We need to access ember_config to get the threshold
-                threshold = getattr(ember_router, "ember_config", None)
-                if threshold:
-                    threshold_val = threshold.confidence_threshold
-                    outcome, confidence = await ember_router.route_detailed(request.prompt, context_summary=request.context_summary)
-                    
-                    if confidence >= threshold_val:
-                        span.set_attribute("router.fast_tier_hit", True)
-                        span.set_attribute("router.fast_tier_confidence", confidence)
-                        span.set_attribute("router.outcome", outcome)
-                        return RouteResponse(route=outcome)
-                    else:
-                        span.set_attribute("router.fast_tier_hit", False)
-                        span.set_attribute("router.fast_tier_confidence", confidence)
-            except Exception as e:
-                logger.warning("Fast-Tier pre-routing failed: %s", e)
+        pipeline = RoutingPipeline([
+            OpsSecPreFilterStep(),
+            FastTierStep(),
+            TargetProviderStep(),
+        ])
 
-        # Execute routing via the primary target router
-        try:
-            outcome = await target_router.route(request.prompt, context_summary=request.context_summary)
-        except Exception as e:
-            span.set_attribute("error", True)
-            span.set_attribute("error.message", str(e))
-            raise HTTPException(status_code=500, detail=f"Routing failed: {e}")
-            
-        span.set_attribute("router.outcome", outcome)
-        return RouteResponse(route=outcome)
+        result = await pipeline.execute(pipeline_ctx)
+        return RouteResponse(route=result.route)
+
+
+@router.post("/route/protected", response_model=ProtectedRouteResponse)
+async def route_query_protected(request: RouteRequest, req: Request):
+    """
+    Dedicated protected routing endpoint.
+    Executes OpsSec vector attack evaluation pre-filter and outputs comprehensive security metadata.
+    """
+    await ensure_state_initialized()
+    
+    if state.ops_sec_analyzer is None:
+        shared_executor = state.get_executor()
+        ops_sec_path = getattr(state.config.application, "rules_ops_sec", "rules_ops_sec.toml")
+        state.setup_ops_sec(ops_sec_path, shared_executor)
+
+    ctx = extract(req.headers)
+
+    with state.tracer.start_as_current_span(
+        "origami_router.protected_route",
+        attributes={"router.model_requested": request.model},
+        context=ctx
+    ) as span:
+        pipeline_ctx = PipelineContext(
+            model=request.model,
+            prompt=request.prompt,
+            context_summary=request.context_summary,
+            span=span,
+            sanitized_prompt=request.prompt,
+        )
+
+        pipeline = RoutingPipeline([
+            OpsSecPreFilterStep(),
+            FastTierStep(),
+            TargetProviderStep(),
+        ])
+
+        result = await pipeline.execute(pipeline_ctx)
+        c = result.context
+
+        return ProtectedRouteResponse(
+            route=result.route,
+            threat_detected=c.threat_detected,
+            matched_attack=c.matched_attack,
+            category=c.category,
+            severity=c.severity,
+            confidence=c.confidence,
+            action_taken=c.action_taken,
+            sanitized_prompt=c.sanitized_prompt,
+        )
+
+
+@router.post("/admin/rules/reload")
+async def reload_rules_endpoint(routing_rules_path: Optional[str] = None, ops_sec_rules_path: Optional[str] = None):
+    """
+    Administrative endpoint for dynamic zero-downtime hot-swapping of routing & security rules.
+    """
+    try:
+        res = await state.reload_rules_and_routers(routing_rules_path, ops_sec_rules_path)
+        return res
+    except Exception as e:
+        logger.error("Failed to hot-reload rules: %s", e, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Hot-reload failed: {e}")
