@@ -14,7 +14,7 @@
 
 import argparse
 import toml
-from typing import Optional, Dict
+from typing import Optional, Dict, Any
 from concurrent.futures import ThreadPoolExecutor
 from origami_api.config import Config
 from origami_api.interfaces import StatelessRouter
@@ -23,12 +23,92 @@ from origami_stateless.builder import RouterBuilder
 from origami_common.otel import get_tracer
 
 active_routers: Dict[str, StatelessRouter] = {}
+ops_sec_analyzer: Optional[Any] = None
 config: Optional[Config] = None
 tracer = None
 executor: Optional[ThreadPoolExecutor] = None
 
+def setup_ops_sec(rules_path: str, shared_executor: ThreadPoolExecutor) -> None:
+    """Provisions the global OpsSecAnalyzer for prompt protection."""
+    global ops_sec_analyzer, config
+    import os
+    from origami_stateless.builder import OpsSecBuilder
+
+    if not os.path.exists(rules_path) and os.path.exists("rules_ops_sec.toml"):
+        rules_path = "rules_ops_sec.toml"
+
+    if os.path.exists(rules_path):
+        print(f"Initializing OpsSec analyzer from '{rules_path}'...")
+        builder = OpsSecBuilder().with_rules_file(rules_path).with_executor(shared_executor).with_config(config)
+        ops_sec_analyzer = builder.build_analyzer()
+    else:
+        print(f"WARNING: OpsSec rules file '{rules_path}' not found. OpsSec protection disabled.")
+
+async def reload_rules_and_routers(routing_rules_path: Optional[str] = None, ops_sec_rules_path: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Performs atomic hot-swapping re-initialization of routing rules and OpsSec analyzers
+    without service downtime or process restarts.
+    """
+    global config, active_routers, ops_sec_analyzer
+    import os
+    from origami_stateless.builder import OpsSecBuilder, RouterBuilder
+
+    if config is None:
+        config = Config()
+
+    shared_executor = get_executor()
+
+    r_path = routing_rules_path or getattr(config.application, "rules_routing", "rules_router.toml")
+    if not os.path.exists(r_path) and os.path.exists("rules_router.toml"):
+        r_path = "rules_router.toml"
+
+    o_path = ops_sec_rules_path or getattr(config.application, "rules_ops_sec", "rules_ops_sec.toml")
+    if not os.path.exists(o_path) and os.path.exists("rules_ops_sec.toml"):
+        o_path = "rules_ops_sec.toml"
+
+    rules = load_rules(r_path)
+    server_cfg = getattr(config, "server", None)
+
+    new_routers = {}
+    if server_cfg and hasattr(server_cfg, "routers"):
+        router_configs = server_cfg.routers
+        if isinstance(router_configs, dict):
+            router_configs = list(router_configs.values())
+
+        for r_cfg in router_configs:
+            name = getattr(r_cfg, "name", None) if hasattr(r_cfg, "name") else r_cfg.get("name")
+            provider = getattr(r_cfg, "provider", None) if hasattr(r_cfg, "provider") else r_cfg.get("provider")
+            if name and provider:
+                router_instance = RouterBuilder.create_router(
+                    provider=provider,
+                    rules=rules,
+                    config=config,
+                    executor=shared_executor,
+                    router_config=r_cfg
+                )
+                if router_instance:
+                    new_routers[name.lower()] = router_instance
+
+    active_routers.clear()
+    active_routers.update(new_routers)
+
+    if os.path.exists(o_path):
+        builder = OpsSecBuilder().with_rules_file(o_path).with_executor(shared_executor).with_config(config)
+        ops_sec_analyzer = builder.build_analyzer()
+
+    return {
+        "status": "success",
+        "active_routers": list(active_routers.keys()),
+        "ops_sec_enabled": ops_sec_analyzer is not None,
+        "routing_rules_path": r_path,
+        "ops_sec_rules_path": o_path,
+    }
+
 def load_rules(rules_path: str) -> RoutingRules:
     """Loads routing rules from a TOML file."""
+    import os
+    if not os.path.exists(rules_path) and os.path.exists("rules_router.toml"):
+        rules_path = "rules_router.toml"
     with open(rules_path, "r") as f:
         data = toml.load(f)
     

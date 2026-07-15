@@ -85,7 +85,9 @@ class Application(TomlClass):
     location: str = ""
     threadPoolSize: int = 0
     google_project_id: str = ""
-    rules_file: str = "rules.toml"
+    enable_ops_sec: bool = False
+    rules_routing: str = "rules_router.toml"
+    rules_ops_sec: str = "rules_ops_sec.toml"
 
 class AIModel(TomlClass):
     model_name: str = ""

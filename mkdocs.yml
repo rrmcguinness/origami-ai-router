@@ -56,6 +56,7 @@ nav:
   - Architecture:
       - Overview: architecture/index.md
       - Routing Logic & Engine: architecture/routing-logic.md
+      - Operational Security (OpsSec): architecture/ops-sec.md
       - ADK Best Practices: architecture/adk-best-practices.md
       - Latency & Routing Fixes: architecture/routing-fix.md
   - Setup & Operations:
@@ -63,6 +64,7 @@ nav:
       - Optimization Strategies: setup/optimizations.md
   - Benchmarks & Evaluations:
       - Performance Report: evaluations/performance-report.md
+      - OpsSec Vector Performance: evaluations/ops-sec-evaluation.md
       - Analysis Results: evaluations/analysis-results.md
       - Model Assessments:
           - Overview & Composite: evaluations/models/composite.md

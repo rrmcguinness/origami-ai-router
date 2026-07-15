@@ -1,0 +1,29 @@
+[project]
+license = { text = "Apache-2.0" }
+name = "origami-ops-sec"
+version = "0.1.0"
+description = "Operational Security pre-processor and vector attack analyzer using Ember embeddings"
+readme = "README.md"
+authors = [
+    { name = "Ryan McGuinness", email = "rmcguinness@google.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "origami-api",
+    "origami-ember",
+    "origami-common",
+    "pydantic>=2.10.0",
+    "toml>=0.10.2",
+    "torch>=2.10.0",
+    "numpy>=2.2.6",
+    "google-adk>=1.27.2",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.0,<0.9"]
+build-backend = "uv_build"
+
+[tool.uv.sources]
+origami-api = { workspace = true }
+origami-ember = { workspace = true }
+origami-common = { workspace = true }

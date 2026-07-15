@@ -29,9 +29,11 @@ from google.adk.agents.llm_agent import Agent
 @pytest.fixture(scope="module")
 def rules_data():
     """Loads and returns the rules.toml configuration."""
-    rules_path = os.path.join(os.path.dirname(__file__), "../../../rules.toml")
+    rules_path = os.path.join(os.path.dirname(__file__), "../../../rules_router.toml")
     if not os.path.exists(rules_path):
-        rules_path = "rules.toml"
+        rules_path = os.path.join(os.path.dirname(__file__), "../../../rules.toml")
+    if not os.path.exists(rules_path):
+        rules_path = "rules_router.toml"
         
     try:
         with open(rules_path, "r") as f:

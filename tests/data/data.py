@@ -40,7 +40,7 @@ def get_rules_for_provider(provider_type: str) -> RoutingRules:
     Dynamically loads the specialized routing rules for a given provider.
     """
     cfg = Config()
-    rules_file = getattr(cfg.application, "rules_file", "rules.toml")
+    rules_file = getattr(cfg.application, "rules_routing", "rules_router.toml")
     project_root = os.path.abspath(os.path.join(_base_dir, "..", ".."))
     rules_path = os.path.join(project_root, rules_file)
     

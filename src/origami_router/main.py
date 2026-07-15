@@ -35,7 +35,9 @@ app.add_middleware(
 async def startup_event():
     """Initializes routers and telemetry on startup."""
     parser = argparse.ArgumentParser(description="EdgeRouter FastAPI Service")
-    parser.add_argument("--rules", type=str, default="rules.toml", help="Path to the routing rules TOML file (overrides config)")
+    parser.add_argument("--rules", type=str, default=None, help="Path to the routing rules TOML file (overrides config)")
+    parser.add_argument("--enable-ops-sec", action="store_true", default=False, help="Enable operational security vector attack protection")
+    parser.add_argument("--ops-sec-rules", type=str, default=None, help="Path to rules_ops_sec.toml file (overrides config)")
     args, unknown = parser.parse_known_args()
     
     if state.config is None:
@@ -47,11 +49,18 @@ async def startup_event():
     
     init_otel(state.config)
     state.tracer = get_tracer("edgerouter_service")
-    rules_path = args.rules if args.rules else getattr(state.config.application, "rules_file", "rules.toml")
+    rules_path = args.rules if args.rules else getattr(state.config.application, "rules_routing", "rules_router.toml")
     rules = state.load_rules(rules_path)
     
     await state.setup_routers(server_cfg, rules, shared_executor)
-    print(f"EdgeRouter service started with rules from: {rules_path}. Active routers: {list(state.active_routers.keys())}")
+
+    # Initialize OpsSec protection if enabled via CLI flag or config
+    enable_ops_sec = args.enable_ops_sec or getattr(state.config.application, "enable_ops_sec", False)
+    if enable_ops_sec:
+        ops_sec_path = args.ops_sec_rules if args.ops_sec_rules else getattr(state.config.application, "rules_ops_sec", "rules_ops_sec.toml")
+        state.setup_ops_sec(ops_sec_path, shared_executor)
+
+    print(f"EdgeRouter service started with rules from: {rules_path}. Active routers: {list(state.active_routers.keys())}. OpsSec Enabled: {enable_ops_sec}")
 
 @app.on_event("shutdown")
 async def shutdown_event():
